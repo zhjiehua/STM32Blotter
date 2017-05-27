@@ -1,10 +1,10 @@
-#ifndef __LED_H
-#define __LED_H	 
+#ifndef __BUTTON_H
+#define __BUTTON_H	 
 #include "sys.h"
 //////////////////////////////////////////////////////////////////////////////////	 
 //本程序只供学习使用，未经作者许可，不得用于其它任何用途
 //ALIENTEK战舰STM32开发板
-//LED驱动代码	   
+//蜂鸣器驱动代码	   
 //正点原子@ALIENTEK
 //技术论坛:www.openedv.com
 //修改日期:2012/9/2
@@ -13,12 +13,18 @@
 //Copyright(C) 广州市星翼电子科技有限公司 2009-2019
 //All rights reserved									  
 ////////////////////////////////////////////////////////////////////////////////// 
-#define LED1 PCout(9)// PC9
-#define LED2 PAout(8)// PA8	
 
-void LED_Init(void);//初始化
+#define BUTTON_COUNT 4	//	   
 
-void LED1Task(void);
-void LED2Task(void);
-	
+typedef struct
+{
+    uint8_t flag; //标志是否进入过中断
+    void (*CallBackFun)(void *para); //进入中断后的回调函数
+}Button_TypeDef;
+
+extern Button_TypeDef button[BUTTON_COUNT];
+
+void Button_Init(void);	//初始化
+		 				    
 #endif
+

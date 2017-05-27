@@ -108,11 +108,11 @@
           <SimDllName>SARMCM3.DLL</SimDllName>
           <SimDllArguments></SimDllArguments>
           <SimDlgDll>DARMSTM.DLL</SimDlgDll>
-          <SimDlgDllArguments>-pSTM32F103ZE</SimDlgDllArguments>
+          <SimDlgDllArguments>-pSTM32F103VE</SimDlgDllArguments>
           <TargetDllName>SARMCM3.DLL</TargetDllName>
           <TargetDllArguments></TargetDllArguments>
           <TargetDlgDll>TARMSTM.DLL</TargetDlgDll>
-          <TargetDlgDllArguments>-pSTM32F103ZE</TargetDlgDllArguments>
+          <TargetDlgDllArguments>-pSTM32F103VE</TargetDlgDllArguments>
         </DllOption>
         <DebugOption>
           <OPTHX>
@@ -123,7 +123,7 @@
             <Oh166RecLen>16</Oh166RecLen>
           </OPTHX>
           <Simulator>
-            <UseSimulator>1</UseSimulator>
+            <UseSimulator>0</UseSimulator>
             <LoadApplicationAtStartup>1</LoadApplicationAtStartup>
             <RunToMain>1</RunToMain>
             <RestoreBreakpoints>1</RestoreBreakpoints>
@@ -135,7 +135,7 @@
             <RestoreSysVw>1</RestoreSysVw>
           </Simulator>
           <Target>
-            <UseTarget>0</UseTarget>
+            <UseTarget>1</UseTarget>
             <LoadApplicationAtStartup>1</LoadApplicationAtStartup>
             <RunToMain>1</RunToMain>
             <RestoreBreakpoints>1</RestoreBreakpoints>
@@ -147,7 +147,7 @@
             <RestoreSysVw>1</RestoreSysVw>
           </Target>
           <RunDebugAfterBuild>0</RunDebugAfterBuild>
-          <TargetSelection>4</TargetSelection>
+          <TargetSelection>11</TargetSelection>
           <SimDlls>
             <CpuDll></CpuDll>
             <CpuDllArguments></CpuDllArguments>
@@ -161,7 +161,7 @@
             <PeripheralDll></PeripheralDll>
             <PeripheralDllArguments></PeripheralDllArguments>
             <InitializationFile></InitializationFile>
-            <Driver>Segger\JL2CM3.dll</Driver>
+            <Driver>STLink\ST-LINKIII-KEIL_SWO.dll</Driver>
           </TargetDlls>
         </DebugOption>
         <Utilities>
@@ -365,7 +365,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\USER;..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\STM32F10x_FWLib\inc;..\FWLIB\STM32F10x_FWLib\inc;..\HARDWARE\LED;..\HARDWARE\BEEP;..\HARDWARE\KEY;..\FreeRTOS\Source\include;..\FreeRTOS\Source\portable\RVDS\ARM_CM3;..\FreeRTOS\Source\CMSIS_RTOS;..\FWLIB\CMSIS\Include</IncludePath>
+              <IncludePath>..\USER;..\CORE;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\STM32F10x_FWLib\inc;..\FWLIB\STM32F10x_FWLib\inc;..\HARDWARE\LED;..\HARDWARE\BEEP;..\HARDWARE\KEY;..\FreeRTOS\Source\include;..\FreeRTOS\Source\portable\RVDS\ARM_CM3;..\FreeRTOS\Source\CMSIS_RTOS;..\FWLIB\CMSIS\Include;..\HARDWARE;..\HARDWARE\24CXX</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -437,11 +437,142 @@
               <FileName>key.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\KEY\key.c</FilePath>
+              <FileOption>
+                <CommonProperty>
+                  <UseCPPCompiler>2</UseCPPCompiler>
+                  <RVCTCodeConst>0</RVCTCodeConst>
+                  <RVCTZI>0</RVCTZI>
+                  <RVCTOtherData>0</RVCTOtherData>
+                  <ModuleSelection>0</ModuleSelection>
+                  <IncludeInBuild>0</IncludeInBuild>
+                  <AlwaysBuild>2</AlwaysBuild>
+                  <GenerateAssemblyFile>2</GenerateAssemblyFile>
+                  <AssembleAssemblyFile>2</AssembleAssemblyFile>
+                  <PublicsOnly>2</PublicsOnly>
+                  <StopOnExitCode>11</StopOnExitCode>
+                  <CustomArgument></CustomArgument>
+                  <IncludeLibraryModules></IncludeLibraryModules>
+                  <ComprImg>1</ComprImg>
+                </CommonProperty>
+                <FileArmAds>
+                  <Cads>
+                    <interw>2</interw>
+                    <Optim>0</Optim>
+                    <oTime>2</oTime>
+                    <SplitLS>2</SplitLS>
+                    <OneElfS>2</OneElfS>
+                    <Strict>2</Strict>
+                    <EnumInt>2</EnumInt>
+                    <PlainCh>2</PlainCh>
+                    <Ropi>2</Ropi>
+                    <Rwpi>2</Rwpi>
+                    <wLevel>2</wLevel>
+                    <uThumb>2</uThumb>
+                    <uSurpInc>2</uSurpInc>
+                    <uC99>2</uC99>
+                    <useXO>2</useXO>
+                    <VariousControls>
+                      <MiscControls></MiscControls>
+                      <Define></Define>
+                      <Undefine></Undefine>
+                      <IncludePath></IncludePath>
+                    </VariousControls>
+                  </Cads>
+                </FileArmAds>
+              </FileOption>
             </File>
             <File>
               <FileName>beep.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\BEEP\beep.c</FilePath>
+            </File>
+            <File>
+              <FileName>Button.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\Button\Button.c</FilePath>
+            </File>
+            <File>
+              <FileName>DCMotor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\DCMotor\DCMotor.c</FilePath>
+            </File>
+            <File>
+              <FileName>NTCResitor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\NTCResister\NTCResitor.c</FilePath>
+              <FileOption>
+                <CommonProperty>
+                  <UseCPPCompiler>2</UseCPPCompiler>
+                  <RVCTCodeConst>0</RVCTCodeConst>
+                  <RVCTZI>0</RVCTZI>
+                  <RVCTOtherData>0</RVCTOtherData>
+                  <ModuleSelection>0</ModuleSelection>
+                  <IncludeInBuild>0</IncludeInBuild>
+                  <AlwaysBuild>2</AlwaysBuild>
+                  <GenerateAssemblyFile>2</GenerateAssemblyFile>
+                  <AssembleAssemblyFile>2</AssembleAssemblyFile>
+                  <PublicsOnly>2</PublicsOnly>
+                  <StopOnExitCode>11</StopOnExitCode>
+                  <CustomArgument></CustomArgument>
+                  <IncludeLibraryModules></IncludeLibraryModules>
+                  <ComprImg>1</ComprImg>
+                </CommonProperty>
+                <FileArmAds>
+                  <Cads>
+                    <interw>2</interw>
+                    <Optim>0</Optim>
+                    <oTime>2</oTime>
+                    <SplitLS>2</SplitLS>
+                    <OneElfS>2</OneElfS>
+                    <Strict>2</Strict>
+                    <EnumInt>2</EnumInt>
+                    <PlainCh>2</PlainCh>
+                    <Ropi>2</Ropi>
+                    <Rwpi>2</Rwpi>
+                    <wLevel>2</wLevel>
+                    <uThumb>2</uThumb>
+                    <uSurpInc>2</uSurpInc>
+                    <uC99>2</uC99>
+                    <useXO>2</useXO>
+                    <VariousControls>
+                      <MiscControls></MiscControls>
+                      <Define></Define>
+                      <Undefine></Undefine>
+                      <IncludePath></IncludePath>
+                    </VariousControls>
+                  </Cads>
+                </FileArmAds>
+              </FileOption>
+            </File>
+            <File>
+              <FileName>PhSensor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\PhotoelectricSensor\PhSensor.c</FilePath>
+            </File>
+            <File>
+              <FileName>RelayMOS.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\RelayMOS\RelayMOS.c</FilePath>
+            </File>
+            <File>
+              <FileName>StepMotor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\StepMotor\StepMotor.c</FilePath>
+            </File>
+            <File>
+              <FileName>24cxx.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\24CXX\24cxx.c</FilePath>
+            </File>
+            <File>
+              <FileName>myiic.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\24CXX\myiic.c</FilePath>
+            </File>
+            <File>
+              <FileName>wdg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\WDG\wdg.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -502,6 +633,26 @@
               <FileName>stm32f10x_rcc.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\FWLIB\STM32F10x_FWLib\src\stm32f10x_rcc.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f10x_exti.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32F10x_FWLib\src\stm32f10x_exti.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f10x_tim.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32F10x_FWLib\src\stm32f10x_tim.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f10x_adc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32F10x_FWLib\src\stm32f10x_adc.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f10x_iwdg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\FWLIB\STM32F10x_FWLib\src\stm32f10x_iwdg.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -595,6 +746,126 @@
               <FileName>queue.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\FreeRTOS\Source\queue.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>HMI</GroupName>
+          <Files>
+            <File>
+              <FileName>cmd_process.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HMI\cmd_process.c</FilePath>
+            </File>
+            <File>
+              <FileName>cmd_queue.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HMI\cmd_queue.c</FilePath>
+            </File>
+            <File>
+              <FileName>hmi_driver.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HMI\hmi_driver.c</FilePath>
+            </File>
+            <File>
+              <FileName>hmi_user_uart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HMI\hmi_user_uart.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>Logic</GroupName>
+          <Files>
+            <File>
+              <FileName>calibration.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Logic\calibration.c</FilePath>
+            </File>
+            <File>
+              <FileName>managerment.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Logic\managerment.c</FilePath>
+            </File>
+            <File>
+              <FileName>project.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Logic\project.c</FilePath>
+            </File>
+            <File>
+              <FileName>purge.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Logic\purge.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>UILogic</GroupName>
+          <Files>
+            <File>
+              <FileName>actionPage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UILogic\actionPage.c</FilePath>
+            </File>
+            <File>
+              <FileName>backflowPage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UILogic\backflowPage.c</FilePath>
+            </File>
+            <File>
+              <FileName>calibrationPage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UILogic\calibrationPage.c</FilePath>
+            </File>
+            <File>
+              <FileName>informationPage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UILogic\informationPage.c</FilePath>
+            </File>
+            <File>
+              <FileName>mainPage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UILogic\mainPage.c</FilePath>
+            </File>
+            <File>
+              <FileName>pausePage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UILogic\pausePage.c</FilePath>
+            </File>
+            <File>
+              <FileName>projectEditPage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UILogic\projectEditPage.c</FilePath>
+            </File>
+            <File>
+              <FileName>projectPage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UILogic\projectPage.c</FilePath>
+            </File>
+            <File>
+              <FileName>purgePage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UILogic\purgePage.c</FilePath>
+            </File>
+            <File>
+              <FileName>runningPage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UILogic\runningPage.c</FilePath>
+            </File>
+            <File>
+              <FileName>selectPumpPage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UILogic\selectPumpPage.c</FilePath>
+            </File>
+            <File>
+              <FileName>tips1Page.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UILogic\tips1Page.c</FilePath>
+            </File>
+            <File>
+              <FileName>tips2Page.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\UILogic\tips2Page.c</FilePath>
             </File>
           </Files>
         </Group>

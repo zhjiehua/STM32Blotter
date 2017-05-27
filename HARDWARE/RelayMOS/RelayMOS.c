@@ -1,8 +1,4 @@
-#include "beep.h"
-
-#include "FreeRTOS.h"
-#include "task.h"
-
+#include "RelayMOS.h"
 //////////////////////////////////////////////////////////////////////////////////	 
 //本程序只供学习使用，未经作者许可，不得用于其它任何用途
 //ALIENTEK战舰STM32开发板
@@ -18,40 +14,27 @@
 
 //初始化PB8为输出口.并使能这个口的时钟		    
 //蜂鸣器初始化
-void Beep_Init(void)
+void RelayMOS_Init(void)
 {
-
     GPIO_InitTypeDef  GPIO_InitStructure;
 
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);	 //使能GPIOB端口时钟
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB | RCC_APB2Periph_GPIOC, ENABLE);	 //使能GPIOB端口时钟
 
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;				 //BEEP-->PB.8 端口配置
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;				 //BEEP-->PB.8 端口配置
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP; 		 //推挽输出
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;	 //速度为50MHz
     GPIO_Init(GPIOC, &GPIO_InitStructure);	 //根据参数初始化GPIOB.8
 
-    GPIO_ResetBits(GPIOC, GPIO_Pin_8);//输出0，关闭蜂鸣器输出
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_14;				 //BEEP-->PB.8 端口配置
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP; 		 //推挽输出
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;	 //速度为50MHz
+    GPIO_Init(GPIOB, &GPIO_InitStructure);	 //根据参数初始化GPIOB.8
+
+//    GPIO_SetBits(GPIOC,GPIO_Pin_7);//输出0,MOS1
+//    GPIO_SetBits(GPIOC,GPIO_Pin_6);//输出0,MOS2
+    GPIO_ResetBits(GPIOC,GPIO_Pin_7);//输出0,MOS1
+    GPIO_ResetBits(GPIOC,GPIO_Pin_6);//输出0,MOS2
+    
+    GPIO_ResetBits(GPIOB,GPIO_Pin_14);//输出0,Relay
 
 }
-
-/*
- * 蜂鸣器驱动
- * 参数：mode: 0:一直响
- *		 	   1:鸣叫5声
- */
-void beepAlarm(uint8_t millisec)
-{									   
-	if(millisec == 0)
-		BEEP = 1;  //一直响
-	else
-	{
-        TickType_t ticks = millisec / portTICK_PERIOD_MS;
-        BEEP = 1;
-        
-        vTaskDelay(ticks ? ticks : 1);          /* Minimum delay = 1 tick */
-        
-		BEEP = 0;
-		vTaskDelay(1000);  //等待1000个时钟滴答(ticks),即1s
-	}
-}
-

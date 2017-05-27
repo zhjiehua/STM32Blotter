@@ -1,7 +1,10 @@
 #include "stm32f10x.h"
 #include "key.h"
 #include "sys.h" 
-#include "delay.h"
+
+#include "FreeRTOS.h"
+#include "task.h"
+
 //////////////////////////////////////////////////////////////////////////////////	 
 //本程序只供学习使用，未经作者许可，不得用于其它任何用途
 //ALIENTEK战舰STM32开发板
@@ -47,7 +50,9 @@ u8 KEY_Scan(u8 mode)
 	if(mode)key_up=1;  //支持连按		  
 	if(key_up&&(KEY0==0||KEY1==0||KEY2==0||WK_UP==1))
 	{
-		delay_ms(10);//去抖动 
+		TickType_t ticks = 10 / portTICK_PERIOD_MS;
+		vTaskDelay(ticks ? ticks : 1);//去抖动
+		
 		key_up=0;
 		if(KEY0==0)return 1;
 		else if(KEY1==0)return 2;

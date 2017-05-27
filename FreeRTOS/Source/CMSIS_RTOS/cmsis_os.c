@@ -655,8 +655,9 @@ osStatus osMutexDelete (osMutexId mutex_id)
 */
 osSemaphoreId osSemaphoreCreate (const osSemaphoreDef_t *semaphore_def, int32_t count)
 {
-  (void) semaphore_def;
   osSemaphoreId sema;
+  (void) semaphore_def;
+  
   
   if (count == 1) {
     vSemaphoreCreateBinary(sema);
@@ -1051,10 +1052,13 @@ typedef struct os_mailQ_cb {
 */
 osMailQId osMailCreate (const osMailQDef_t *queue_def, osThreadId thread_id)
 {
+  //osPoolDef_t pool_def = {queue_def->queue_sz, queue_def->item_sz, NULL};
+  osPoolDef_t pool_def;
+  pool_def.pool_sz = queue_def->queue_sz;
+  pool_def.item_sz = queue_def->item_sz;
+  pool_def.pool = NULL;
+ 
   (void) thread_id;
-  
-  osPoolDef_t pool_def = {queue_def->queue_sz, queue_def->item_sz, NULL};
-  
   
   /* Create a mail queue control block */
   *(queue_def->cb) = pvPortMalloc(sizeof(struct os_mailQ_cb));
@@ -1090,9 +1094,8 @@ osMailQId osMailCreate (const osMailQDef_t *queue_def, osThreadId thread_id)
 */
 void *osMailAlloc (osMailQId queue_id, uint32_t millisec)
 {
-  (void) millisec;
   void *p;
-  
+  (void) millisec;
   
   if (queue_id == NULL) {
     return NULL;
