@@ -23,6 +23,7 @@ void IIC_Init(void)
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP ;   //推挽输出
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOD, &GPIO_InitStructure);
+	
 	GPIO_SetBits(GPIOD,GPIO_Pin_9|GPIO_Pin_10); 	//PB6,PB7 输出高
     GPIO_ResetBits(GPIOD,GPIO_Pin_8); 	//WP
 }

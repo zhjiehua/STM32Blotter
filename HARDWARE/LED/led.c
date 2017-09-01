@@ -39,22 +39,22 @@ void LED_Init(void)
  
 void LED1Task(void)
 {
-	while(1)
+	static uint16_t cnt;
+
+	if(cnt++ > 5)
 	{
-		GPIO_SetBits(GPIOC, GPIO_Pin_9);
-		vTaskDelay(1000);
-		GPIO_ResetBits(GPIOC, GPIO_Pin_9);
-		vTaskDelay(1000);
+		cnt = 0;
+		LED1 = !LED1;
 	}
 }
 
 void LED2Task(void)
 {
-	while(1)
+	static uint16_t cnt;
+
+	if(cnt++ > 20)
 	{
-		GPIO_SetBits(GPIOA, GPIO_Pin_8);
-		vTaskDelay(500);
-		GPIO_ResetBits(GPIOA, GPIO_Pin_8);
-		vTaskDelay(500);
+		cnt = 0;
+		LED2 = !LED2;
 	}
 }

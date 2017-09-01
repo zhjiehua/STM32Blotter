@@ -2,6 +2,17 @@
 #include "usart.h"
 #include "stm32f10x_exti.h"
 #include "PhotoelectricSensor/PhSensor.h"
+#include "../Logic/managerment.h"
+#include "../DCMotor/DCMotor.h"
+#include "../StepMotor/StepMotor.h"
+#include "../RelayMOS/RelayMOS.h"
+#include "../WDG/WDG.h"
+#include "../HARDWARE/24CXX/24cxx.h"
+
+/* Scheduler includes. */
+#include "FreeRTOS.h"
+#include "task.h"
+
 //////////////////////////////////////////////////////////////////////////////////	 
 //本程序只供学习使用，未经作者许可，不得用于其它任何用途
 //ALIENTEK战舰STM32开发板
@@ -34,13 +45,13 @@ void Button_Init(void)
     
     // NVIC 配置
     NVIC_InitStructure.NVIC_IRQChannel = EXTI0_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=0 ;//抢占优先级3
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=1 ;//抢占优先级3
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;		//子优先级3
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			//IRQ通道使能
 	NVIC_Init(&NVIC_InitStructure);	//根据指定的参数初始化VIC寄存器
     
     NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;		//子优先级3
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;		//子优先级3
 	NVIC_Init(&NVIC_InitStructure);	//根据指定的参数初始化VIC寄存器
     
     NVIC_InitStructure.NVIC_IRQChannel = EXTI2_IRQn;
@@ -65,15 +76,18 @@ void Button_Init(void)
 
 void EXTI0_IRQHandler(void)
 {
+	uint32_t oldBasePri = portSET_INTERRUPT_MASK_FROM_ISR();
+	
     button[0].flag = 1;
-        
+	
     EXTI_ClearITPendingBit(EXTI_Line0);
+	portCLEAR_INTERRUPT_MASK_FROM_ISR(oldBasePri);
 }
 
 void EXTI1_IRQHandler(void)
 {
     button[1].flag = 1;
-    
+	
     EXTI_ClearITPendingBit(EXTI_Line1);
 }
 

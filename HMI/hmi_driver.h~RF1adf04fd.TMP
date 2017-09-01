@@ -55,11 +55,6 @@ void SetCommBps(uint8 option);
 void SetHandShake(void);
 
 /*! 
- *  \brief  复位串口屏
- */
-void ResetDevice(void);
-
-/*! 
  *  \brief  设置前景色
  *  \param  color 前景色
  */

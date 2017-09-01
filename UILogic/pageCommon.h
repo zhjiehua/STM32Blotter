@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include "string.h"
+#include "stdint.h"
 #include "../HMI/hmi_user_uart.h"
 #include "../HMI/hmi_driver.h"
 #include "../HMI/cmd_process.h"
@@ -28,6 +29,8 @@ extern "C" {
 #define TIPS0PAGE_INDEX					12
 #define TIPS1PAGE_INDEX					13
 #define TIPS2PAGE_INDEX					14
+#define MANUALPAGE_INDEX				15
+#define MOTORPARAPAGE_INDEX				16
 
 /************************************************************************/
 /* LOGO页面控件ID                                                         */
@@ -117,6 +120,8 @@ extern "C" {
 #define INFO_LANG_MENU					4
 #define INFO_POSCALI1_EDIT				5
 #define INFO_POSCALI2_EDIT				6
+#define INFO_MANUAL_EDIT				7
+#define INFO_MOTORPARA_EDIT				8
 #define INFO_BACK_BUTTON				50
 
 /************************************************************************/
@@ -199,6 +204,67 @@ extern "C" {
 #define TIPS2_CANCEL_BUTTON				3
 
 /************************************************************************/
+/* 手动页面控件ID                                                      */
+/************************************************************************/
+#define MANUAL_PUMP1_BUTTON				1
+#define MANUAL_PUMP2_BUTTON				2
+#define MANUAL_PUMP3_BUTTON				3
+#define MANUAL_PUMP4_BUTTON				4
+#define MANUAL_PUMP5_BUTTON				5
+#define MANUAL_PUMP6_BUTTON				6
+#define MANUAL_PUMP7_BUTTON				7
+#define MANUAL_PUMP8_BUTTON				8
+#define MANUAL_WASTEPUMP_BUTTON			9
+#define MANUAL_VACUUMPUMP_BUTTON		10
+#define MANUAL_PINCHVALVE_BUTTON		11
+#define MANUAL_TURNTABLE_BUTTON			12
+#define MANUAL_CWCCW_BUTTON				13
+
+#define MANUAL_PUMPSEL_EDIT				14
+#define MANUAL_PUMPSEL_BUTTON			15
+#define MANUAL_PUMPSEL_MENU				16	
+#define MANUAL_PUMPCWCCW_BUTTON			17
+#define MANUAL_PUMPAMOUNT_EDIT			18
+#define MANUAL_PUMPSTART_BUTTON			19
+
+#define MANUAL_WASTEPUMPUP_BUTTON		20
+#define MANUAL_WASTEPUMPDOWN_BUTTON		21
+
+#define MANUAL_TURNTABLEHOME_BUTTON		22
+#define MANUAL_TURNTABLENEXT_BUTTON		23
+#define MANUAL_TURNTABLELAST_BUTTON		24
+#define MANUAL_TURNTABLENEXT2_BUTTON	25
+#define MANUAL_TURNTABLELAST2_BUTTON	26
+#define MANUAL_TURNTABLEPOS_EDIT		27
+#define MANUAL_TURNTABLEPOS_BUTTON		28
+
+#define MANUAL_BACK_BUTTON				50
+
+/************************************************************************/
+/* 电机参数页面控件ID                                                      */
+/************************************************************************/
+#define MOTORPARA_PUMPSPEED_EDIT		1
+#define MOTORPARA_WASTEPUMPSPEED_EDIT	2
+#define MOTORPARA_TTHOMESPEED_EDIT		3
+#define MOTORPARA_TTSTEP1SPEED_EDIT		4
+#define MOTORPARA_TTSTEP2SPEED_EDIT		5
+#define MOTORPARA_TTLOCATIONSPEED_EDIT	6
+#define MOTORPARA_TTLOWSPEED_EDIT		7
+#define MOTORPARA_TTMIDDLESPEED_EDIT	8
+#define MOTORPARA_TTFASTSPEED_EDIT		9
+#define MOTORPARA_TTSTARTFREQ_EDIT		10
+#define MOTORPARA_TTENDFREQ_EDIT		11
+#define MOTORPARA_TTACCERALATE_EDIT		12
+#define MOTORPARA_TTSTEPTIME_EDIT		13
+#define MOTORPARA_CREATETABLE_BUTTON	14
+#define MOTORPARA_TTSPEEDLEVEL_EDIT		15
+#define MOTORPARA_WASTEPUMPCALIB_EDIT	16
+#define MOTORPARA_CWPUMPCALIB_EDIT		17
+#define MOTORPARA_CCWPUMPCALIB_EDIT		18
+
+#define MOTORPARA_BACK_BUTTON			50
+
+/************************************************************************/
 /* 泵选择MASK                                                           */
 /************************************************************************/
 #define PUMP1_MASK						0x01
@@ -272,6 +338,13 @@ void tips2PageButtonProcess(uint16 control_id, uint8  state);
 
 void selectPumpPageButtonProcess(uint16 control_id, uint8  state);
 void pausePageButtonProcess(uint16 control_id, uint8  state);
+
+void manualPageButtonProcess(uint16 control_id, uint8  state);
+void manualPageMenuProcess(uint16 control_id, uint8 item);
+void manualPageEditProcess(uint16 control_id, uint8 *str);
+
+void motorParaPageButtonProcess(uint16 control_id, uint8 state);
+void motorParaPageEditProcess(uint16 control_id, uint8 *str);
 
 #ifdef __cplusplus
 }

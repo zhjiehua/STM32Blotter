@@ -114,6 +114,17 @@ void SetHandShake()
 	END_CMD();
 }
 
+void ResetDevice()
+{
+	BEGIN_CMD();
+	TX_8(0x07);
+	TX_8(0x35);
+	TX_8(0x5A);
+	TX_8(0x53);
+	TX_8(0xA5);
+	END_CMD();
+}
+
 void SetFcolor(uint16 color)
 {
 	BEGIN_CMD();
@@ -660,7 +671,7 @@ void SetTextInt32(uint16 screen_id,uint16 control_id,uint32 value,uint8 sign,uin
 void SetTextFloat(uint16 screen_id,uint16 control_id,float value,uint8 precision,uint8 show_zeros)
 {
 	uint8 i = 0;
-
+	
 	BEGIN_CMD();
 	TX_8(0xB1);
 	TX_8(0x07);
@@ -669,11 +680,11 @@ void SetTextFloat(uint16 screen_id,uint16 control_id,float value,uint8 precision
 	TX_8(0x02);
 	TX_8((precision&0x0f)|(show_zeros?0x80:0x00));
 	
-	for (i=0;i<4;++i)
+	for(i=0;i<4;++i)
 	{
 		TX_8(((uint8 *)&value)[i]);
 	}
-
+	
 	END_CMD();
 }
 

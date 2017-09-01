@@ -28,13 +28,15 @@ void projectEditPageButtonProcess(uint16 control_id, uint8 state)
 				addrOffset = pProjectMan->pCurEditProject->index+1;
 			cDebug("addrOffset = %d\n", (uint16_t)addrOffset);
 			AT24CXX_Read(PROJECT_BASEADDR+addrOffset*PROJECT_SIZE, (uint8_t*)project, PROJECT_SIZE);  //读出下一个项目参数			
-			cDebug("project[0].name = %s\n", project[0].name);
-			cDebug("project[0].index = %d\n", (uint16_t)(project[0].index));
+			cDebug("project[0].name = %s\r\n", project[0].name);
+			cDebug("project[0].index = %d\r\n", (uint16_t)(project[0].index));
 
 			pProjectMan->pCurEditAction = &pProjectMan->pCurEditProject->action[0];
 
+			xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 			SetTextValue(PROJECTEDITPAGE_INDEX, PROEDIT_PROJECTNAME_EDIT, (uint8_t*)pProjectMan->pCurEditProject->name);
 			SetTextValue(PROJECTEDITPAGE_INDEX, PROEDIT_ACTIONNAME_EDIT, (uint8_t*)pProjectMan->pCurEditAction->name);
+			xSemaphoreGive(pProjectMan->lcdUartSem);
 		}
 		break;
 		case PROEDIT_PREPROJECT_BUTTON:
@@ -54,8 +56,10 @@ void projectEditPageButtonProcess(uint16 control_id, uint8 state)
 
 			pProjectMan->pCurEditAction = &pProjectMan->pCurEditProject->action[0];
 
+			xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 			SetTextValue(PROJECTEDITPAGE_INDEX, PROEDIT_PROJECTNAME_EDIT, (uint8_t*)pProjectMan->pCurEditProject->name);
 			SetTextValue(PROJECTEDITPAGE_INDEX, PROEDIT_ACTIONNAME_EDIT, (uint8_t*)pProjectMan->pCurEditAction->name);
+			xSemaphoreGive(pProjectMan->lcdUartSem);
 		}
 		break;
 		case PROEDIT_POSTACTION_BUTTON:
@@ -65,7 +69,9 @@ void projectEditPageButtonProcess(uint16 control_id, uint8 state)
 				else
 					pProjectMan->pCurEditAction += 1;
 
+				xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 				SetTextValue(PROJECTEDITPAGE_INDEX, PROEDIT_ACTIONNAME_EDIT, (uint8_t*)pProjectMan->pCurEditAction->name);
+				xSemaphoreGive(pProjectMan->lcdUartSem);
 			}
 		break;
 		case PROEDIT_PREACTION_BUTTON:
@@ -75,11 +81,15 @@ void projectEditPageButtonProcess(uint16 control_id, uint8 state)
 				else
 					pProjectMan->pCurEditAction -= 1;
 
+				xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 				SetTextValue(PROJECTEDITPAGE_INDEX, PROEDIT_ACTIONNAME_EDIT, (uint8_t*)pProjectMan->pCurEditAction->name);
+				xSemaphoreGive(pProjectMan->lcdUartSem);
 			}
 		break;
 		case PROEDIT_EDITACTION_BUTTON:  //跳到动作页面，更新动作页面控件信息
 			{
+				xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
+				
 				SetTextValue(ACTIONPAGE_INDEX, ACTEDIT_PUMPSEL_EDIT, (uint8_t*)actionPumpMenuText[pProjectMan->pCurEditAction->pump]);
 			  	if(pProjectMan->lang == 0)
 				{
@@ -92,14 +102,16 @@ void projectEditPageButtonProcess(uint16 control_id, uint8 state)
 					SetTextValue(ACTIONPAGE_INDEX, ACTEDIT_TIPSSEL_EDIT, (uint8_t*)actionTipsMenuTextCh[pProjectMan->pCurEditAction->tips]);
 					SetTextValue(ACTIONPAGE_INDEX, ACTEDIT_VOICESEL_EDIT, (uint8_t*)actionVoiceMenuTextCh[pProjectMan->pCurEditAction->voice]);
 					SetTextValue(ACTIONPAGE_INDEX, ACTEDIT_SPEEDSEL_EDIT, (uint8_t*)actionSpeedMenuTextCh[pProjectMan->pCurEditAction->shakeSpeed]);
-					cDebug("projectEditPage actionSpeedMenuTextCh[%d] = %s!\n", (uint16_t)pProjectMan->pCurEditAction->shakeSpeed, actionSpeedMenuTextCh[pProjectMan->pCurEditAction->shakeSpeed]);					
+					//cDebug("projectEditPage actionSpeedMenuTextCh[%d] = %s!\n", (uint16_t)pProjectMan->pCurEditAction->shakeSpeed, actionSpeedMenuTextCh[pProjectMan->pCurEditAction->shakeSpeed]);					
 				}
-				SetTextValueInt32(ACTIONPAGE_INDEX, ACTEDIT_ADDAMOUNT_EDIT, pProjectMan->pCurEditAction->addAmount);
+				SetTextValueFloat(ACTIONPAGE_INDEX, ACTEDIT_ADDAMOUNT_EDIT, pProjectMan->pCurEditAction->addAmount);
 				SetTextValueInt32(ACTIONPAGE_INDEX, ACTEDIT_IMBIAMOUNT_EDIT, pProjectMan->pCurEditAction->imbiAmount);
 				SetTextValueInt32(ACTIONPAGE_INDEX, ACTEDIT_TIMEHOUR_EDIT, pProjectMan->pCurEditAction->shakeTime.hour);
 				SetTextValueInt32(ACTIONPAGE_INDEX, ACTEDIT_TIMEMIN_EDIT, pProjectMan->pCurEditAction->shakeTime.minute);
 				SetTextValueInt32(ACTIONPAGE_INDEX, ACTEDIT_LOOPTIME_EDIT, pProjectMan->pCurEditAction->loopTime);
 
+				xSemaphoreGive(pProjectMan->lcdUartSem);
+				
 				pProjectMan->pump = pProjectMan->pCurEditAction->pump;
 				pProjectMan->tips = pProjectMan->pCurEditAction->tips;
 				pProjectMan->voice = pProjectMan->pCurEditAction->voice;

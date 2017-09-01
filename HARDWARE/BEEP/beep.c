@@ -20,7 +20,6 @@
 //蜂鸣器初始化
 void Beep_Init(void)
 {
-
     GPIO_InitTypeDef  GPIO_InitStructure;
 
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);	 //使能GPIOB端口时钟
@@ -31,7 +30,6 @@ void Beep_Init(void)
     GPIO_Init(GPIOC, &GPIO_InitStructure);	 //根据参数初始化GPIOB.8
 
     GPIO_ResetBits(GPIOC, GPIO_Pin_8);//输出0，关闭蜂鸣器输出
-
 }
 
 /*

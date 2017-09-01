@@ -52,9 +52,13 @@ void actionPageEditProcess(uint16 control_id, uint8 *str)
 	{
 		case ACTEDIT_ADDAMOUNT_EDIT:
 			if(pProjectMan->pump == 8)//0，无泵
-				SetTextValueInt32(ACTIONPAGE_INDEX, ACTEDIT_ADDAMOUNT_EDIT, 0);
+			{
+				xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
+				SetTextValueFloat(ACTIONPAGE_INDEX, ACTEDIT_ADDAMOUNT_EDIT, 0.0);//SetTextValueInt32
+				xSemaphoreGive(pProjectMan->lcdUartSem);
+			}
 			else
-				pProjectMan->addAmount = (uint8)StringToInt32(str);//StringToFloat(str);
+				pProjectMan->addAmount = StringToFloat(str);//StringToFloat(str);(uint8)StringToInt32(str)
 		break;
 		case ACTEDIT_IMBIAMOUNT_EDIT:
 			pProjectMan->imbiAmount = StringToInt32(str);
@@ -85,16 +89,21 @@ void actionPageMenuProcess(uint16 control_id, uint8 item)
 				//如果是pump0转换到其他值，则初始化加注量为最小值2
 				if(pProjectMan->pump == PUMP0)
 				{
-					pProjectMan->addAmount = 2;
-					SetTextValueInt32(ACTIONPAGE_INDEX, ACTEDIT_ADDAMOUNT_EDIT, 2);
+					pProjectMan->addAmount = 1.0;
+					xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
+					//SetTextValueInt32(ACTIONPAGE_INDEX, ACTEDIT_ADDAMOUNT_EDIT, 2);
+					SetTextValueFloat(ACTIONPAGE_INDEX, ACTEDIT_ADDAMOUNT_EDIT, 1.0);
+					xSemaphoreGive(pProjectMan->lcdUartSem);
 				}	
 
 				pProjectMan->pump = (Pump_TypeDef)item;
 				if(item == PUMP0) //0，无泵
 				{
-					pProjectMan->addAmount = 0;
-					//SetTextValueFloat(ACTIONPAGE_INDEX, ACTEDIT_ADDAMOUNT_EDIT, 0.0);
-					SetTextValueInt32(ACTIONPAGE_INDEX, ACTEDIT_ADDAMOUNT_EDIT, 0);
+					pProjectMan->addAmount = 0.0;
+					xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
+					SetTextValueFloat(ACTIONPAGE_INDEX, ACTEDIT_ADDAMOUNT_EDIT, 0.0);
+					//SetTextValueInt32(ACTIONPAGE_INDEX, ACTEDIT_ADDAMOUNT_EDIT, 0);
+					xSemaphoreGive(pProjectMan->lcdUartSem);
 				}
 			}	
 		}

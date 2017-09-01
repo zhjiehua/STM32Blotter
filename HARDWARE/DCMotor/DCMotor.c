@@ -1,7 +1,12 @@
 #include "../DCMotor/DCMotor.h"
 #include "../PhotoelectricSensor/PhSensor.h"
+#include "../RelayMOS/RelayMOS.h"
 #include "usart.h"
 #include "CPrintf.h"
+#include "StepMotor/StepMotor.h"
+#include "NTCResistor/NTCResistor.h"
+
+#include "../Logic/managerment.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -26,32 +31,15 @@ const DCMotorPin_TypeDef DCMotorPin[] =
     {GPIOA, GPIO_Pin_6 , 0, TIM3, TIM_Channel_1, GPIOC, GPIO_Pin_4},//"DCMotor12"
 };
 
-//static void DCMotor_SetCMD(DCMotorEnum_TypeDef num, Status sta)
-//{
-//    if(sta != ENABLE)
-//    {
-////        TIM_CCxCmd(DCMotorPin[num].TIMx, DCMotorPin[num].TIM_Channel, TIM_CCx_Disable);
-////        GPIO_SetBits(DCMotorPin[num].PWM_GPIOx, DCMotorPin[num].PWM_GPIO_Pin);
-////        //TIM_ForcedOC1Config(DCMotorPin[num].TIMx, TIM_ForcedAction_Active);
-////        GPIO_SetBits(DCMotorPin[num].DIR_GPIOx, DCMotorPin[num].DIR_GPIO_Pin);
-//        
-////        DCMotor_SetDir(num, CCW);
-////        DCMotor_SetSpeed(num, 0);
-//    }
-//    else
-//    {
-////        TIM_CCxCmd(DCMotorPin[num].TIMx, DCMotorPin[num].TIM_Channel, TIM_CCx_Enable);
-////        //GPIO_SetBits(DCMotorPin[num].PWM_GPIOx, DCMotorPin[num].PWM_GPIO_Pin);
-////        //GPIO_SetBits(DCMotorPin[num].DIR_GPIOx, DCMotorPin[num].DIR_GPIO_Pin);
-//    }
-//}
-
 //设置直流电机的速度
 //其实是设置PWM的占空比，0~100,100为最大占空比
 void DCMotor_SetSpeed(DCMotorEnum_TypeDef num, uint8_t speed)
 {
     dcMotor[num].speed = speed;
     
+	if(speed > 100)
+		speed = 100;
+	
     if(dcMotor[num].direction == CCW)
         dcMotor[num].timPulse = (uint16_t)((float)speed/100.0*(float)(dcMotor[num].timPeriod));
     else
@@ -96,142 +84,6 @@ void DCMotor_Run(DCMotorEnum_TypeDef num, Direction_TypeDef dir, uint8_t speed)
 {
     DCMotor_SetDir(num, dir);
     DCMotor_SetSpeed(num, speed);
-}
-
-void DCMotor_SetPos(DCMotorEnum_TypeDef num, uint8_t pos)
-{
-	dcMotor[num].curCount = 0;
-	dcMotor[num].desCount = pos;
-}
-
-void DCMotor_UpdatePos(DCMotorEnum_TypeDef num)
-{
-	dcMotor[num].curCount++;		
-}
-
-uint8_t DCMotor_IsOnPos(DCMotorEnum_TypeDef num)
-{
-	return (dcMotor[num].curCount >= dcMotor[num].desCount); 		
-}
-
-//如果向下卡住了，则向上动一下，在向下走，直到到位；向上同理
-void DCMotor_WastePump_SetPos(Position_TypeDef pos)
-{
-	uint16_t cnt = 0;
-	uint8_t flag = 0;
-
-	if(pos == UP)
-	{
-		PhSensor_SetCheckEdge(PHSENSOR_UP, RASINGEDGE);
-
-		DCMotor_SetPos(PUMP_WASTE, 1);
-		//DCMotor_SetSpeed(PUMP_WASTE, 100-30);
-		DCMotor_SetSpeed(PUMP_WASTE, 0); //CW方向时，100表示不转，0为最大速度
-		DCMotor_SetDir(PUMP_WASTE, CW);
-		//DCMotor_SetCMD(PUMP_WASTE, ENABLE);
-
-		cDebug("UP\n");
-		while(!DCMotor_IsOnPos(PUMP_WASTE))
-		{
-			//cDebug("cnt = %d\n", cnt);
-			if(flag == 0)
-			{
-				cnt++;
-				//cDebug("+++++++ cnt = %d\n", cnt);
-				if(cnt >= 300)
-				{
-					cnt = 0;
-					//pDCMotor->SetPos(1);
-					//DCMotor_SetCMD(PUMP_WASTE, DISABLE);
-					DCMotor_SetDir(PUMP_WASTE, CCW);
-                    DCMotor_SetSpeed(PUMP_WASTE, 100);
-					//DCMotor_SetCMD(PUMP_WASTE, ENABLE);
-					flag = 1;
-					cDebug("UP down\n");
-				}
-			}
-			else
-			{
-				cnt++;
-				//cDebug("------ cnt = %d\n", cnt);
-				if(cnt >= 100)
-				{
-					cnt = 0;
-					DCMotor_SetPos(PUMP_WASTE, 1);
-					//DCMotor_SetCMD(PUMP_WASTE, DISABLE);
-					DCMotor_SetDir(PUMP_WASTE, CW);
-                    DCMotor_SetSpeed(PUMP_WASTE, 0);	
-					//DCMotor_SetCMD(PUMP_WASTE, ENABLE);
-					flag = 0;
-					cDebug("UP up\n");
-				}
-			}
-			
-			if(PhSensor_GetStatus(PHSENSOR_UP))
-				DCMotor_UpdatePos(PUMP_WASTE);	
-		}
-		cDebug("UP finish\n");
-		//DCMotor_SetCMD(PUMP_WASTE, DISABLE);		
-	}
-	else
-	{
-		PhSensor_SetCheckEdge(PHSENSOR_DOWN, RASINGEDGE);
-	
-		DCMotor_SetPos(PUMP_WASTE, 1);
-		//DCMotor_SetSpeed(PUMP_WASTE, 30);
-		DCMotor_SetSpeed(PUMP_WASTE, 100);  //CCW方向时，0表示不转，100为最大速度
-		DCMotor_SetDir(PUMP_WASTE, CCW);
-		//DCMotor_SetCMD(PUMP_WASTE, ENABLE);
-
-		cDebug("DOWN\n");
-
-		while(!DCMotor_IsOnPos(PUMP_WASTE))
-		{
-			//cDebug("cnt = %d\n", cnt);
-			if(flag == 0)
-			{
-				cnt++;
-				//cDebug("+++++++ cnt = %d\n", cnt);
-				if(cnt >= 300)
-				{
-					cnt = 0;
-					//DCMotor_SetPos(1);
-					//DCMotor_SetCMD(PUMP_WASTE, DISABLE);
-					DCMotor_SetSpeed(PUMP_WASTE, 0);
-					DCMotor_SetDir(PUMP_WASTE, CW);
-					//DCMotor_SetCMD(PUMP_WASTE, ENABLE);
-					flag = 1;
-					cDebug("DOWN up\n");
-				}
-			}
-			else
-			{
-				cnt++;
-				//cDebug("------ cnt = %d\n", cnt);
-				if(cnt >= 100)
-				{
-					cnt = 0;
-					DCMotor_SetPos(PUMP_WASTE, 1);
-					//DCMotor_SetCMD(PUMP_WASTE, DISABLE);
-					DCMotor_SetSpeed(PUMP_WASTE, 100);
-					DCMotor_SetDir(PUMP_WASTE, CCW);
-					//DCMotor_SetCMD(PUMP_WASTE, ENABLE);
-					flag = 0;
-					cDebug("DOWN down\n");
-				}	
-			}
-
-			if(PhSensor_GetStatus(PHSENSOR_DOWN))
-				DCMotor_UpdatePos(PUMP_WASTE);	
-		}
-		cDebug("DOWN finish\n");
-
-		//DCMotor_SetCMD(PUMP_WASTE, DISABLE);
-		DCMotor_SetDir(PUMP_WASTE, CW);//废液泵电机停止的时候要拉高方向引脚		
-	}
-
-	flag = 0;
-	cnt = 0;
 }
 
 //PWM初始化
@@ -314,11 +166,12 @@ void DCMotor_Init(void)
             TIM_BDTRInitStructure.TIM_BreakPolarity = TIM_BreakPolarity_High;//??????
             TIM_BDTRInitStructure.TIM_AutomaticOutput = TIM_AutomaticOutput_Disable;//?????? 
             TIM_BDTRConfig(DCMotorPin[i].TIMx, &TIM_BDTRInitStructure);
+			
+			TIM_CtrlPWMOutputs(DCMotorPin[i].TIMx, ENABLE);
         }
         
         TIM_ARRPreloadConfig(DCMotorPin[i].TIMx, ENABLE); 
         TIM_Cmd(DCMotorPin[i].TIMx, ENABLE);
-        //TIM_CtrlPWMOutputs(DCMotorPin[i].TIMx, ENABLE);
         
         dcMotor[i].direction = CW;
         dcMotor[i].speed = 0;
@@ -338,78 +191,3 @@ void DCMotor_Init(void)
 //	pDCMotor->SetCMD(DCMOTOR12, ENABLE);//夹管阀先使能，到时调用pDCMotor->SetSpeed(DCMOTOR12, 0);开，调用pDCMotor->SetSpeed(DCMOTOR12, 100);关
 //	pDCMotor->SetSpeed(DCMOTOR12, 100);//关闭夹管阀
 }
-
-void DCMotorTestTask(void)
-{
-//	if(pDCMotor->control == 0x01)
-//	{
-//		pSensor->SetCheckEdge(RASINGEDGE);
-//	
-//		pDCMotor->SetPos(1);
-//		pDCMotor->SetSpeed(DCMOTOR1, 10);
-//		pDCMotor->SetDir(DCMOTOR1, CW);
-//		pDCMotor->SetCMD(DCMOTOR1, ENABLE);
-
-//		while(!pDCMotor->IsOnPos())
-//		{
-//			if(pSensor->GetStatus(SENSOR_UP))
-//				pDCMotor->UpdatePos();	
-//		}
-//		pDCMotor->SetCMD(DCMOTOR1, DISABLE);
-
-//		//pDCMotor->WastePump_SetPos(UP);
-
-//		pDCMotor->control = 0x00;
-//	}
-//	else if(pDCMotor->control == 0x02)
-//	{
-//		pSensor->SetCheckEdge(RASINGEDGE);
-//	
-//		pDCMotor->SetPos(1);
-//		pDCMotor->SetSpeed(DCMOTOR1, 90);
-//		pDCMotor->SetDir(DCMOTOR1, CW);
-//		pDCMotor->SetCMD(DCMOTOR1, ENABLE);
-
-//		while(!pDCMotor->IsOnPos())
-//		{
-//			if(pSensor->GetStatus(SENSOR_UP))
-//				pDCMotor->UpdatePos();
-//		}
-//		pDCMotor->SetCMD(DCMOTOR1, DISABLE);
-
-//		//pDCMotor->WastePump_SetPos(DOWN);
-
-//		pDCMotor->control = 0x00;
-//	}
-
-    while(1)
-    {
-        if(pDCMotor[0].control == 0x01)
-        {
-//            pDCMotor->SetCMD(DCMOTOR1, DISABLE);
-            DCMotor_SetSpeed(DCMOTOR1, pDCMotor->temp*10);
-//            pDCMotor->SetDir(DCMOTOR1, CW);
-//            pDCMotor->SetCMD(DCMOTOR1, ENABLE);
-        }
-        else if(pDCMotor[0].control == 0x02)
-        {
-//            pDCMotor->SetCMD(DCMOTOR1, DISABLE);
-//            pDCMotor->SetSpeed(DCMOTOR1, 90);
-            DCMotor_SetDir(DCMOTOR1, (Direction_TypeDef)pDCMotor->temp);
-            //pDCMotor->SetCMD(DCMOTOR1, ENABLE);
-        }
-        else if(pDCMotor[0].control == 0x03)
-        {
-            //pDCMotor->SetCMD(DCMOTOR1, DISABLE);
-        }
-        else if(pDCMotor[0].control == 0x04)
-        {
-            //pDCMotor->SetCMD(DCMOTOR1, ENABLE);
-        }
-        
-        pDCMotor->control = 0;
-        
-        vTaskDelay(100);
-    }
-  
-} 

@@ -8,6 +8,7 @@ extern "C" {
 
 void mainPageButtonProcess(uint16 control_id, uint8  state)
 {
+	xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 	switch(control_id)
 	{
 		case MAIN_PROJECT_BUTTON:
@@ -47,8 +48,8 @@ void mainPageButtonProcess(uint16 control_id, uint8  state)
 		case MAIN_CALI_BUTTON:
 			pProjectMan->caliAmount = pProjectMan->pCaliPumpPara[pProjectMan->caliPumpSel];
 			SetTextValue(CALIBRATIONPAGE_INDEX, CALI_PUMPSELECT_EDIT, (uint8_t*)caliPumpMenuText[pProjectMan->caliPumpSel]);
-			SetTextValueInt32(CALIBRATIONPAGE_INDEX, CALI_ACTUALAMOUNT_EDIT, 0);
-			//SetTextFloat(CALIBRATIONPAGE_INDEX, CALI_ACTUALAMOUNT_EDIT, pProjectMan->pCaliPumpPara[pProjectMan->caliPumpSel], 1, 1);
+			//SetTextValueInt32(CALIBRATIONPAGE_INDEX, CALI_ACTUALAMOUNT_EDIT, 0);
+			SetTextValueFloat(CALIBRATIONPAGE_INDEX, CALI_ACTUALAMOUNT_EDIT, pProjectMan->pCaliPumpPara[pProjectMan->caliPumpSel]);
 			break;
 		case MAIN_INFO_BUTTON:
 			SetTextValue(INFORMATIONPAGE_INDEX, INFO_VERSION_EDIT, (uint8_t*)VERSION);
@@ -56,15 +57,12 @@ void mainPageButtonProcess(uint16 control_id, uint8  state)
 				SetTextValue(INFORMATIONPAGE_INDEX, INFO_LANG_EDIT, (uint8_t*)(langMenuText[pProjectMan->lang]));
 			else
 				SetTextValue(INFORMATIONPAGE_INDEX, INFO_LANG_EDIT, (uint8_t*)(langMenuTextCh[pProjectMan->lang]));
-
-			SetTextValueInt32(INFORMATIONPAGE_INDEX, INFO_POSCALI1_EDIT, pProjectMan->posCali1);
-			SetTextValueInt32(INFORMATIONPAGE_INDEX, INFO_POSCALI2_EDIT, pProjectMan->posCali2);
-
 			break;
 		default:
 			cDebug("mainPage BUTTON error!\n");
 			break;
 	}
+	xSemaphoreGive(pProjectMan->lcdUartSem);
 }
 
 #ifdef __cplusplus

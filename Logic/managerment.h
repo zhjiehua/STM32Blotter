@@ -11,9 +11,45 @@ extern "C" {
 #include "../HMI/cmd_process.h"
 #include "../HMI/hmi_user_uart.h"
 
+#include "../PID/PID.h"
+	
+/* Scheduler includes. */
+#include "FreeRTOS.h"
+#include "task.h"
+#include "timers.h"
+#include "queue.h"
+#include "semphr.h"
+#include "event_groups.h"
+	
+#define SOFTWARETIMER_COUNT 3
+
+#define BEEPER_TIME_SHORT	50
+#define BEEPER_TIME_MIDDLE	100
+#define BEEPER_TIME_FAST	200
+
+#define FILLINGTUBE_TIME		4000
+#define FILLINGTUBE_CON_TIME	500
+
+//项目程序代号
+#define PROJECT_PROJECT				1
+#define PROJECT_BACKFLOW			2
+#define PROJECT_PURGE				3
+#define PROJECT_CALIBRATION			4
+#define MANUAL_PUMP					5
+#define MANUAL_WASTEPUMP_UP			6
+#define MANUAL_WASTEPUMP_DOWN		7
+#define MANUAL_TURNTABLE_HOME		8
+#define MANUAL_TURNTABLE_NEXT		9
+#define MANUAL_TURNTABLE_LAST		10
+#define MANUAL_TURNTABLE_NEXT2		11
+#define MANUAL_TURNTABLE_LAST2		12
+#define MANUAL_TURNTABLE_POS		13
+
+#define PROJECT_RUNNING				0x80
+	
 typedef enum
 {
-	TIPSSOURCE_NONE,
+	TIPSSOURCE_NONE = 0,
 
 	//tips2页面
 	TIPSSOURCE_FILLTIPS,
@@ -31,14 +67,14 @@ typedef enum
 
 typedef enum
 {
-	TIPS_NONE,
+	TIPS_NONE = 0,
 	TIPS_CANCEL,
 	TIPS_OK,
 }TipsButton_TypeDef;
 
 typedef enum
 {
-	EXCEPTION_NONE,
+	EXCEPTION_NONE = 0,
 	EXCEPTION_PAUSE,
 	EXCEPTION_STOP,
 }Exception_TypeDef;
@@ -61,7 +97,7 @@ typedef enum
 
 typedef enum
 {
-	PROJECTSTATUS_IDLE,
+	PROJECTSTATUS_IDLE = 0,
 	PROJECTSTATUS_SELECTPUMP,
 	PROJECTSTATUS_FILLING,
 	PROJECTSTATUS_PLACEPLATE,
@@ -81,6 +117,12 @@ typedef enum
 /************************************************************************/
 typedef struct
 {
+	uint8_t projectStatus; //bit7表示测试程序正在运行，bit6~bit0对应项目程序代号
+	uint8_t projectStopFlag; //
+	SemaphoreHandle_t projectStatusSem;
+	
+	SemaphoreHandle_t lcdUartSem;
+	
 	Project_TypeDef *pCurRunningProject;  //运行页面当前正在运行的项目
 	Action_TypeDef *pCurRunningAction;  //运行页面当前正在运行的动作
 	uint8 curTank;  //运行页面当前动作的槽
@@ -101,6 +143,8 @@ typedef struct
 	uint8 pumpSelPumpSel;  //泵选择页面的泵选择按钮状态
 
 	uint8 caliPumpSel;  //校准页面的泵选择按钮状态
+	uint8 caliFlag;
+	uint32 *pCaliPumpTime;  //实际的校准泵参数列表
 	float *pCaliPumpPara;  //实际的校准泵参数列表
 	float caliAmount;  //校准页面实际加注量的输入临时参数
 
@@ -123,9 +167,17 @@ typedef struct
 	TipsButton_TypeDef tipsButton;  //提示页面的按钮状态
 	RunningType_TypeDef runningType;  //正在运行的类型
 
+	TaskHandle_t projectTaskHandle;
+	TaskHandle_t uiTaskHandle;
+	
+	TimerHandle_t xTimerUser[SOFTWARETIMER_COUNT];
+	uint8_t timerExpireFlag[SOFTWARETIMER_COUNT];
+	
 	Language_TypeDef lang;
-	uint16 posCali1; //废液口位置校准参数
-	uint16 posCali2; //蠕动泵位置校准参数
+	
+	//PID_TypeDef pumpCaliPID;
+	
+	uint8_t lcdNotifyResetFlag;
 }ProjectMan_TypeDef;
 
 /************************************************************************/
@@ -137,9 +189,7 @@ extern uint8 cmd_buffer[CMD_MAX_SIZE];
 
 void initProjectMan(ProjectMan_TypeDef *pm);
 void initUI(void);
-
-//void uartInterrupt(uint8 data);
-//void loopForever(void);
+void initSoftwareTimer(void);
 
 #ifdef __cplusplus
 }

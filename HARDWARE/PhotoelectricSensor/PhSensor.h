@@ -73,25 +73,23 @@ typedef struct
 	uint32_t fallingEdge; //上升沿，在查询方式用
 	uint32_t rasingEdge; //上升沿，在查询方式用
 
-	uint32_t curCount[PHSENSOR_COUNT];    //当前第几个信号
-	uint32_t desCount[PHSENSOR_COUNT]; 	 //计算第几个信号后停止电机，0表示不停
+	uint32_t curStatusSingle;   //当前状态
+	uint32_t preStatusSingle;	 //上一状态，在查询方式用
+	uint32_t fallingEdgeSingle; //上升沿，在查询方式用
+	uint32_t rasingEdgeSingle; //上升沿，在查询方式用
+	
 	CheckEdge_TypeDef checkEdge[PHSENSOR_COUNT];   //检测边沿类型
-
-//	void (*Scan)(void);
-//	void (*SetCheckEdge)(SensorEnum_TypeDef sensorNum, CheckEdge_TypeDef edge);
-//	void (*SetPos)(uint32_t pos);
-//	uint8_t (*IsOnPos)(SensorEnum_TypeDef sensorNum);
-//	uint8_t (*GetStatus)(SensorEnum_TypeDef sensorNum);
 }PhSensor_TypeDef;
 
 extern const PhSensorPin_TypeDef phSensorPin[];
 extern PhSensor_TypeDef *pPhSensor;
 
+void PhSensor_SingleScan(PhSensorEnum_TypeDef num);
+uint8_t PhSensor_SingleCheck(PhSensorEnum_TypeDef num);
+uint8_t PhSensor_SingleCheckEdge(PhSensorEnum_TypeDef num, CheckEdge_TypeDef edge);
 void PhSensor_Scan(void);
-void PhSensor_SetPos(PhSensorEnum_TypeDef num, uint32_t pos);
-void PhSensor_SetCheckEdge(PhSensorEnum_TypeDef num, CheckEdge_TypeDef edge);
-uint8_t PhSensor_IsOnPos(PhSensorEnum_TypeDef num);
-uint8_t PhSensor_GetStatus(PhSensorEnum_TypeDef num);
+uint8_t PhSensor_Check(PhSensorEnum_TypeDef num);
+uint8_t PhSensor_CheckEdge(PhSensorEnum_TypeDef num, CheckEdge_TypeDef edge);
 
 void PhSensor_Init(void);	//初始化
 void PhSensorScanTask(void);

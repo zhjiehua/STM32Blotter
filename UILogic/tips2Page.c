@@ -20,15 +20,21 @@ void tips2PageButtonProcess(uint16 control_id, uint8  state)
 
 			//更新动作名称
 			pProjectMan->pCurJumptoAction = pProjectMan->pCurRunningAction;
+			
+			xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 			SetTextValue(PAUSEPAGE_INDEX, PAUSE_ACTIONNAME_EDIT, pProjectMan->pCurJumptoAction->name);
 			SetScreen(PAUSEPAGE_INDEX);
+			xSemaphoreGive(pProjectMan->lcdUartSem);
 		}
 		else if(pProjectMan->exceptionButtonFlag == EXCEPTION_STOP)
 		{
 			cDebug("+++EXCEPTION_STOP\n");
 			pProjectMan->exception = EXCEPTION_STOP;
 			pProjectMan->exceptionButtonFlag = EXCEPTION_NONE;
+			
+			xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 			SetScreen(PROJECTPAGE_INDEX);
+			xSemaphoreGive(pProjectMan->lcdUartSem);
 		}
 		else
 		{
@@ -41,7 +47,10 @@ void tips2PageButtonProcess(uint16 control_id, uint8  state)
 		{
 			cDebug("###EXCEPTION_NONE\n");
 			pProjectMan->exceptionButtonFlag = EXCEPTION_NONE;
+			
+			xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 			SetScreen(RUNNINGPAGE_INDEX);
+			xSemaphoreGive(pProjectMan->lcdUartSem);
 		}
 		else
 		{

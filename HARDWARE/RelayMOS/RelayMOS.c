@@ -36,5 +36,4 @@ void RelayMOS_Init(void)
     GPIO_ResetBits(GPIOC,GPIO_Pin_6);//Êä³ö0,MOS2
     
     GPIO_ResetBits(GPIOB,GPIO_Pin_14);//Êä³ö0,Relay
-
 }

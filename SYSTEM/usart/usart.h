@@ -34,7 +34,10 @@ extern u16 USART_RX_STA;         		//接收状态标记
 void uart_init(u32 bound);
 
 void UartTask(void);
-	
+
+//#define LCDUART 0	//UART1
+#define LCDUART	1	//UART4
+
 #endif
 
 

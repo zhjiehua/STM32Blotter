@@ -15,17 +15,11 @@ void backflowPageButtonProcess(uint16 control_id, uint8  state)
 			{
 				state ? (pProjectMan->backflowPumpSel |= PUMP1_MASK) : (pProjectMan->backflowPumpSel &= ~PUMP1_MASK);
 			}
-			//松开夹管阀
-			//pDCMotor->SetSpeed(PUMP_PINCH, 0);
-            DCMotor_Run(PUMP_PINCH, CW, 10);
 			break;
 		case BACKFLOW_PUMP2_BUTTON:
 			{
 				state ? (pProjectMan->backflowPumpSel |= PUMP2_MASK) : (pProjectMan->backflowPumpSel &= ~PUMP2_MASK);
 			}
-			//松开夹管阀
-			//pDCMotor->SetSpeed(PUMP_PINCH, 100);
-            DCMotor_Run(PUMP_PINCH, CW, 100);
 			break;
 		case BACKFLOW_PUMP3_BUTTON:
 			{

@@ -169,11 +169,11 @@ void ProcessMessage( PCTRL_MSG msg, uint16 size )
 	case NOTIFY_ONLINE:
 		cDebug("NOTIFY_ONLINE\n");
 		//pProjectMan->runningType = RUNNING_HOME;
-		//SetScreen(MAINPAGE_INDEX);
+		pProjectMan->lcdNotifyResetFlag = 1;
 
 		//创建线程
 		//os_create_task(TASK_HOME);	//创建回原点任务，如果直接执行创建任务，会出现死机
-        xTaskCreate( (TaskFunction_t)HomeTask, "HomeTask", home_TASK_STACKDEP, NULL, home_TASK_PRIORITY, NULL );
+        //xTaskCreate( (TaskFunction_t)HomeTask, "HomeTask", home_TASK_STACKDEP, NULL, home_TASK_PRIORITY, NULL );
     
 		//createTask(TASK_HOME);
 
@@ -211,7 +211,7 @@ void SetTextValueFloat(uint16 screen_id, uint16 control_id, float value)
 float StringToFloat(uint8 *str)
 {
 	float v = 0;
-	sscanf((char *)str,"%lf",&v);
+	sscanf((char *)str,"%f",&v);//"%lf"
 	return v;
 }
 
@@ -258,6 +258,8 @@ void NotifyButton(uint16 screen_id, uint16 control_id, uint8  state)
 	//TODO: 添加用户代码
 	switch(screen_id)
 	{
+		case LOGOPAGE_INDEX:
+			break;		
 		case MAINPAGE_INDEX:
 			mainPageButtonProcess(control_id, state);
 		break;
@@ -297,6 +299,12 @@ void NotifyButton(uint16 screen_id, uint16 control_id, uint8  state)
 		case SELECTPUMPPAGE_INDEX:
 			selectPumpPageButtonProcess(control_id, state);
 			break;
+		case MANUALPAGE_INDEX:
+			manualPageButtonProcess(control_id, state);
+			break;
+		case MOTORPARAPAGE_INDEX:
+			motorParaPageButtonProcess(control_id, state);
+			break;
 		default:
 			cDebug("cmd_process NotifyButton error!\n");
 		break;
@@ -329,6 +337,12 @@ void NotifyText(uint16 screen_id, uint16 control_id, uint8 *str)
 			break;
 		case INFORMATIONPAGE_INDEX:
 			infoPageEditProcess(control_id, str);
+			break;
+		case MANUALPAGE_INDEX:
+			manualPageEditProcess(control_id, str);
+			break;
+		case MOTORPARAPAGE_INDEX:
+			motorParaPageEditProcess(control_id, str);
 			break;
 		default:
 			cDebug("cmd_process NotifyText error!\n");
@@ -396,6 +410,9 @@ void NotifyMenu(uint16 screen_id, uint16 control_id, uint8  item, uint8  state)
 			break;
 		case INFORMATIONPAGE_INDEX:
 			infoPageMenuProcess(control_id, item);
+			break;
+		case MANUALPAGE_INDEX:
+			manualPageMenuProcess(control_id, item);
 			break;
 		default:
 			cDebug("cmd_process NotifyMenu error!\n");

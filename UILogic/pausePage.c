@@ -17,7 +17,9 @@ void pausePageButtonProcess(uint16 control_id, uint8  state)
 			else
 				pProjectMan->pCurJumptoAction -= 1;
 
+			xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 			SetTextValue(PAUSEPAGE_INDEX, PAUSE_ACTIONNAME_EDIT, (uint8_t*)pProjectMan->pCurJumptoAction->name);
+			xSemaphoreGive(pProjectMan->lcdUartSem);
 		}
 		break;
 	case PAUSE_POSTACTION_BUTTON:
@@ -27,23 +29,29 @@ void pausePageButtonProcess(uint16 control_id, uint8  state)
 			else
 				pProjectMan->pCurJumptoAction += 1;
 
+			xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 			SetTextValue(PAUSEPAGE_INDEX, PAUSE_ACTIONNAME_EDIT, (uint8_t*)pProjectMan->pCurJumptoAction->name);
+			xSemaphoreGive(pProjectMan->lcdUartSem);
 		}
 		break;
 	case PAUSE_JUMPTO_BUTTON:
 		if(pProjectMan->pCurJumptoAction <= pProjectMan->pCurRunningAction)//如果要跳到当前动作之前的动作的，当做是恢复按钮用
 		{
 			pProjectMan->exception = EXCEPTION_NONE;
+			xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 			SetScreen(RUNNINGPAGE_INDEX);
+			xSemaphoreGive(pProjectMan->lcdUartSem);
 		}
 		else
 		{
 			pProjectMan->pCurRunningAction = pProjectMan->pCurJumptoAction;
 			pProjectMan->jumpTo = 1;
 			pProjectMan->exception = EXCEPTION_NONE;
+			xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 			SetControlVisiable(RUNNINGPAGE_INDEX, RUNNING_PAUSE_BUTTON, 0);
 			SetControlVisiable(RUNNINGPAGE_INDEX, RUNNING_STOP_BUTTON, 0);
 			SetScreen(RUNNINGPAGE_INDEX);
+			xSemaphoreGive(pProjectMan->lcdUartSem);
 			cDebug("========pausePage JUMPTO program!\n");
 		}
 		break;
@@ -53,7 +61,9 @@ void pausePageButtonProcess(uint16 control_id, uint8  state)
 		break;
 	case PAUSE_RESUME_BUTTON:
 		pProjectMan->exception = EXCEPTION_NONE;
+		xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 		SetScreen(RUNNINGPAGE_INDEX);
+		xSemaphoreGive(pProjectMan->lcdUartSem);
 		cDebug("========pausePage RESUME program!\n");
 		break;
 		default:

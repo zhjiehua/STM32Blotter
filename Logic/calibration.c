@@ -11,59 +11,73 @@ extern "C" {
 #include "../HARDWARE/StepMotor/StepMotor.h"
 #include "../HARDWARE/RelayMOS/RelayMOS.h"
 #include "../HARDWARE/Beep/beep.h"
-
+#include "../Logic/motorManagerment.h"
+	
 #include "FreeRTOS.h"
 #include "task.h"
-    
-void CalibrationTask(void)
+
+void CalibraProgram(uint8_t *pStopFlag)
 {
 	uint8_t i;
-	uint8_t pumpSel = pProjectMan->caliPumpSel;
-	float time = pProjectMan->pCaliPumpPara[pumpSel];
-	//cDebug("========caliPage start to run the PUMP program!\n");
-
-//	cDebug("pProjectMan->caliPumpSel = %d\n", (uint16_t)pProjectMan->caliPumpSel);
-//	pDCMotor->SetCMD(pProjectMan->caliPumpSel, ENABLE);
-//	os_wait(K_TMO, 1000, 0);
-//	pDCMotor->SetCMD(pProjectMan->caliPumpSel, DISABLE);
-
-
+	int32_t pidOut;
+	float time;
+	
+	cDebug("========caliPage start to run the CalibraProgram!\n");
+	
+//	PID_UpdateActualPoint(&(pProjectMan->pumpCaliPID), pProjectMan->caliAmount);
+//	pidOut = PID_Calc(&(pProjectMan->pumpCaliPID));
+//	time = pProjectMan->caliAmount + pidOut;
+	time = pProjectMan->pCaliPumpTime[pProjectMan->caliPumpSel];
+	
+	cDebug("time = %f\r\n", time);
+	
 	//提示是否灌注管道
 	pProjectMan->tipsButton = TIPS_NONE;
+	xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 	SetScreen(TIPS2PAGE_INDEX);//跳转到提示2页面
 	if(pProjectMan->lang == 0)
 		SetTextValue(TIPS2PAGE_INDEX, TIPS2_TIPS_EDIT, (uchar*)"Whether fill the tube?");
 	else
 		SetTextValue(TIPS2PAGE_INDEX, TIPS2_TIPS_EDIT, (uchar*)"是否灌注管道？");
-
-	beepAlarm(1);
-    
-	while(pProjectMan->tipsButton == TIPS_NONE);
-		
+	
+	SetBuzzer(BEEPER_TIME_SHORT);
+    xSemaphoreGive(pProjectMan->lcdUartSem);
+	
+	while(pProjectMan->tipsButton == TIPS_NONE)
+		vTaskDelay(10);
+	
 	if(pProjectMan->tipsButton == TIPS_CANCEL)
 	{
 		pProjectMan->tipsButton = TIPS_NONE;
+		xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 		SetScreen(CALIBRATIONPAGE_INDEX);//跳转到校准页面
+		xSemaphoreGive(pProjectMan->lcdUartSem);
 	}
 	else
 	{
-        DCMotor_Run((DCMotorEnum_TypeDef)pumpSel, CW, 10);
-		vTaskDelay(380);				
-		DCMotor_Stop((DCMotorEnum_TypeDef)pumpSel);
+        DCMotor_Run((DCMotorEnum_TypeDef)(pProjectMan->caliPumpSel), CW, pMotorMan->motorParaPumpSpeed);
+		vTaskDelay(FILLINGTUBE_TIME);				
+		DCMotor_Stop((DCMotorEnum_TypeDef)(pProjectMan->caliPumpSel));
 	
 		while(1)
 		{
 			//提示是否继续灌注管道
+			xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 			SetScreen(TIPS2PAGE_INDEX);//跳转到提示2页面
 			if(pProjectMan->lang == 0)
 				SetTextValue(TIPS2PAGE_INDEX, TIPS2_TIPS_EDIT, (uchar*)"Whether continue fill the tube?");
 			else
 				SetTextValue(TIPS2PAGE_INDEX, TIPS2_TIPS_EDIT, (uchar*)"是否继续灌注管道？");
 			
-			beepAlarm(1);
-			while(pProjectMan->tipsButton == TIPS_NONE);
-				
+			SetBuzzer(BEEPER_TIME_SHORT);
+			xSemaphoreGive(pProjectMan->lcdUartSem);
+			
+			while(pProjectMan->tipsButton == TIPS_NONE)
+				vTaskDelay(10);
+			
+			xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 			SetScreen(CALIBRATIONPAGE_INDEX);//跳转到运行页面
+			xSemaphoreGive(pProjectMan->lcdUartSem);
 			if(pProjectMan->tipsButton == TIPS_CANCEL)
 			{
 				pProjectMan->tipsButton = TIPS_NONE;
@@ -73,9 +87,9 @@ void CalibrationTask(void)
 			{
 				pProjectMan->tipsButton = TIPS_NONE;
 				//继续灌注管道
-                DCMotor_Run((DCMotorEnum_TypeDef)pumpSel, CW, 10);
-                vTaskDelay(125);				
-                DCMotor_Stop((DCMotorEnum_TypeDef)pumpSel);
+                DCMotor_Run((DCMotorEnum_TypeDef)(pProjectMan->caliPumpSel), CW, pMotorMan->motorParaPumpSpeed);
+                vTaskDelay(FILLINGTUBE_CON_TIME);				
+                DCMotor_Stop((DCMotorEnum_TypeDef)(pProjectMan->caliPumpSel));
 			}
 		}		
 	}
@@ -83,14 +97,20 @@ void CalibrationTask(void)
     vTaskDelay(1000);
 
 	//开始校准
-    DCMotor_Run((DCMotorEnum_TypeDef)pProjectMan->caliPumpSel, CW, 10);
-	//直流电机运行40次的1mL，所以共40mL
 	for(i=0;i<40;i++)
-		vTaskDelay(time);
-	DCMotor_Stop((DCMotorEnum_TypeDef)pProjectMan->caliPumpSel);
-    
+	{
+		DCMotor_Run((DCMotorEnum_TypeDef)(pProjectMan->caliPumpSel), CW, pMotorMan->motorParaPumpSpeed);
+		//直流电机运行40次的1mL，所以共40mL		
+		vTaskDelay(time);		
+		DCMotor_Stop((DCMotorEnum_TypeDef)(pProjectMan->caliPumpSel));
+		vTaskDelay(500);
+    }
+	xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 	SetControlEnable(CALIBRATIONPAGE_INDEX, CALI_PUMPSELECT_BUTTON, 1);
 	SetControlEnable(CALIBRATIONPAGE_INDEX, CALI_START_BUTTON, 1);
+	xSemaphoreGive(pProjectMan->lcdUartSem);
+	
+	pProjectMan->caliFlag = 1;
 }
 
 #ifdef __cplusplus

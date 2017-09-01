@@ -12,18 +12,47 @@
 //All rights reserved									  
 ////////////////////////////////////////////////////////////////////////////////// 	   
 
+#include <stdlib.h>
+//#include <malloc.h>
+
 #include "sys.h"
 #include "StepMotor/StepMotor.h"
 #include "Beep/beep.h"
 #include "LED/LED.h"
 #include "usart.h"
 #include "PhotoelectricSensor/PhSensor.h"
+#include "24CXX/24cxx.h"
 #include "stdlib.h"
 #include "CPrintf.h"
 #include "../Logic/managerment.h"
-
+#include "../Logic/motorManagerment.h"
 #include "FreeRTOS.h"
 #include "task.h"
+
+/*步进电机参数*/
+#define STEPMOTOR_ANGLEPERSTEP  1.8  //步进电机步距角  
+#define STEPMOTOR_FREDIV  32  //步进电机分频系数
+#define STEPMOTOR_PULSEPERROUND  ((360/STEPMOTOR_ANGLEPERSTEP)*STEPMOTOR_FREDIV)  //步进电机每转需要多少个脉冲
+
+//步进电机1r/s需要配置的定时器周期
+#define STEPMOTOR_FREQ_ROUNDPERSEC (72000000/STEPMOTOR_PULSEPERROUND)
+
+//一般步进电机运行速度为600r/min=10r/s，超过1000r/min=16.7r/s会出现力矩急速下降的现象，所以一般不会配置这么高的速度
+#define STEPMOTOR_TIMER_CNT(r) (STEPMOTOR_FREQ_ROUNDPERSEC/(r))
+//#define STEPMOTOR_TIMER_CNT(r) (72000000/(STEPMOTOR_PULSEPERROUND*(r)))
+
+#define SPEED_CONST  1500//(STEPMOTOR_PULSEPERROUND/17) //用于加减速的步进时间常数 1500
+
+#define STEPMOTOR_COUNT 2
+#define STEPMOTOR_DEFAULT_PERIOD STEPMOTOR_TIMER_CNT(0.1)
+
+#define STEP1_EN    PAout(0) 
+#define STEP1_DIR   PAout(2)
+#define STEP1_PWM   PAout(1)
+
+#define STEP2_EN    PAout(5) 
+#define STEP2_DIR   PAout(4)
+#define STEP2_PWM   PAout(3)
 
 static StepMotor_TypeDef stepMotor[STEPMOTOR_COUNT];
 StepMotor_TypeDef *pStepMotor = stepMotor;
@@ -34,63 +63,107 @@ const StepMotorPin_TypeDef StepMotorPin[] =
     {GPIOA, GPIO_Pin_3, TIM2, TIM_Channel_4, TIM2_IRQn, GPIOA, GPIO_Pin_4, GPIOA, GPIO_Pin_5},//"StepMotor2"
 };
 
-//各重要点在转盘回原点后的绝对位置
-const uint8_t AbsCoordinate[10] = 
-{
-	20, // POS_PUMP1 = 
-	21,	// POS_PUMP2 = 
-	22,	// POS_PUMP3 = 
-	23,	// POS_PUMP4 = 
-	24,	// POS_PUMP5 = 
-	25,	// POS_PUMP6 = 
-	26,	// POS_PUMP7 = 
-	27,	// POS_PUMP8 = 
-
-	48, //废液口 POS_WASTE = 
-	3,  //手动点 POS_HANDLE = 	
-};
-
-#if 0
+#if 1
 //定位速度
-const SpeedLevel_TypeDef speedLevel[] = {
-	{STEPMOTOR_FREQ(0.10), 0.10*SPEED_CONST},	//0
-	{STEPMOTOR_FREQ(0.13), 0.13*SPEED_CONST},
-	{STEPMOTOR_FREQ(0.16), 0.16*SPEED_CONST},
-	{STEPMOTOR_FREQ(0.20), 0.20*SPEED_CONST},
-	{STEPMOTOR_FREQ(0.24), 0.24*SPEED_CONST},
-	{STEPMOTOR_FREQ(0.29), 0.29*SPEED_CONST},	//5
-	{STEPMOTOR_FREQ(0.34), 0.34*SPEED_CONST},
-	{STEPMOTOR_FREQ(0.40), 0.40*SPEED_CONST},
-	{STEPMOTOR_FREQ(0.48), 0.48*SPEED_CONST},
-	{STEPMOTOR_FREQ(0.60), 0.60*SPEED_CONST},
-	{STEPMOTOR_FREQ(0.75), 0.75*SPEED_CONST},	//10
-	{STEPMOTOR_FREQ(0.90), 0.90*SPEED_CONST},
-	{STEPMOTOR_FREQ(1.05), 1.05*SPEED_CONST},
-	{STEPMOTOR_FREQ(1.20), 1.20*SPEED_CONST},
-	{STEPMOTOR_FREQ(1.40), 1.40*SPEED_CONST},
-	{STEPMOTOR_FREQ(1.60), 1.60*SPEED_CONST},	//15
-	{STEPMOTOR_FREQ(1.80), 1.80*SPEED_CONST},
-	{STEPMOTOR_FREQ(2.15), 2.15*SPEED_CONST},
-	{STEPMOTOR_FREQ(2.30), 2.30*SPEED_CONST},
-};
+//const SpeedLevel_TypeDef speedLevel[] = {
+//	{STEPMOTOR_TIMER_CNT(0.01), 0.01*SPEED_CONST},   //0
+//	{STEPMOTOR_TIMER_CNT(0.03), 0.03*SPEED_CONST},
+//	{STEPMOTOR_TIMER_CNT(0.06), 0.06*SPEED_CONST},
+//	{STEPMOTOR_TIMER_CNT(0.09), 0.09*SPEED_CONST},
+//	{STEPMOTOR_TIMER_CNT(0.12), 0.12*SPEED_CONST},
+//	{STEPMOTOR_TIMER_CNT(0.15), 0.15*SPEED_CONST},	//5
+//	{STEPMOTOR_TIMER_CNT(0.18), 0.18*SPEED_CONST},
+//	{STEPMOTOR_TIMER_CNT(0.21), 0.21*SPEED_CONST},
+//	{STEPMOTOR_TIMER_CNT(0.24), 0.24*SPEED_CONST},
+//	{STEPMOTOR_TIMER_CNT(0.27), 0.27*SPEED_CONST},
+//	{STEPMOTOR_TIMER_CNT(0.30), 0.30*SPEED_CONST},	//10
+//	{STEPMOTOR_TIMER_CNT(0.33), 0.33*SPEED_CONST},
+//	{STEPMOTOR_TIMER_CNT(0.36), 0.36*SPEED_CONST},
+//	{STEPMOTOR_TIMER_CNT(0.39), 0.39*SPEED_CONST},
+//};
+
+SpeedLevel_TypeDef *speedLevel;
 #else
 //定位速度
 const SpeedLevel_TypeDef speedLevel[] = {
-	{STEPMOTOR_FREQ(0.10), 0.10*SPEED_CONST},   //0
-	{STEPMOTOR_FREQ(0.15), 0.15*SPEED_CONST},
-	{STEPMOTOR_FREQ(0.20), 0.20*SPEED_CONST},
-	{STEPMOTOR_FREQ(0.25), 0.25*SPEED_CONST},
-	{STEPMOTOR_FREQ(0.40), 0.40*SPEED_CONST},
-	{STEPMOTOR_FREQ(0.60), 0.60*SPEED_CONST},	//5
-	{STEPMOTOR_FREQ(0.80), 0.80*SPEED_CONST},
-	{STEPMOTOR_FREQ(1.00), 1.00*SPEED_CONST},
-	{STEPMOTOR_FREQ(1.20), 1.20*SPEED_CONST},
-	{STEPMOTOR_FREQ(1.40), 1.40*SPEED_CONST},
-	{STEPMOTOR_FREQ(1.60), 1.60*SPEED_CONST},	//10
-	{STEPMOTOR_FREQ(1.80), 1.80*SPEED_CONST},
-	{STEPMOTOR_FREQ(2.00), 2.00*SPEED_CONST},
-	{STEPMOTOR_FREQ(2.20), 2.20*SPEED_CONST},
+	{STEPMOTOR_TIMER_CNT(0.10), 0.10*SPEED_CONST},   //0
+	{STEPMOTOR_TIMER_CNT(0.15), 0.15*SPEED_CONST},
+	{STEPMOTOR_TIMER_CNT(0.20), 0.20*SPEED_CONST},
+	{STEPMOTOR_TIMER_CNT(0.25), 0.25*SPEED_CONST},
+	{STEPMOTOR_TIMER_CNT(0.40), 0.40*SPEED_CONST},
+	{STEPMOTOR_TIMER_CNT(0.60), 0.60*SPEED_CONST},	//5
+	{STEPMOTOR_TIMER_CNT(0.80), 0.80*SPEED_CONST},
+	{STEPMOTOR_TIMER_CNT(1.00), 1.00*SPEED_CONST},
+	{STEPMOTOR_TIMER_CNT(1.20), 1.20*SPEED_CONST},
+	{STEPMOTOR_TIMER_CNT(1.40), 1.40*SPEED_CONST},
+	{STEPMOTOR_TIMER_CNT(1.60), 1.60*SPEED_CONST},	//10
+	{STEPMOTOR_TIMER_CNT(1.80), 1.80*SPEED_CONST},
+	{STEPMOTOR_TIMER_CNT(2.00), 2.00*SPEED_CONST},
+	{STEPMOTOR_TIMER_CNT(2.20), 2.20*SPEED_CONST},
 };
+#endif
+
+#if 1
+
+#define ACCERALATION	3000
+#define SPEED_START		2000
+#define SPEED_END		8000
+
+void StepMotor_CreateSpeedTable(void)
+{
+	uint16_t i = 0;
+	float startSpeed = pMotorMan->motorParaStartFreq;
+	float endSpeed = pMotorMan->motorParaEndFreq;
+	//float stepTime = 2.0/startSpeed;
+	float stepTime = (float)(pMotorMan->motorParaStepTime)/1000.0;
+	float time = 0;
+	float speed = 0;
+	
+	//_init_alloc(HEAP_BASE,HEAP_END); 
+	while(speed < endSpeed)
+	{
+		speed = startSpeed + pMotorMan->motorParaAccSpeed * time;
+		i++;
+		time += stepTime;
+	}
+	i--;
+	
+	//申请内存空间
+	speedLevel = (SpeedLevel_TypeDef*)malloc(sizeof(SpeedLevel_TypeDef)*i);
+	
+	i = 0;
+	time = 0;
+	speed = 0;
+	while(speed < endSpeed)
+	{
+		speed = startSpeed + pMotorMan->motorParaAccSpeed * time;
+		speedLevel[i].speed = 72000000/speed;
+		speedLevel[i].speedConst = stepTime * speed;
+		
+		//cDebug("speedLevel[%d].speed = %f\t\n", i, speedLevel[i].speed);
+		//cDebug("speedLevel[%d].speedConst = %f\t\n", i, speedLevel[i].speedConst);
+		
+		i++;
+		time += stepTime;
+	}
+	i--;
+	
+	pMotorMan->motorParaSpeedLevel = i;
+	//AT24CXX_Write(PARASPEEDLEVEL_BASEADDR, (uint8_t*)(&pMotorMan->motorParaSpeedLevel), 2);
+	
+	//cDebug("\nspeedLevel cnt = %d\t\n", i);
+	//cDebug("\nstepTime = %f\t\n", stepTime);
+}
+#else
+void StepMotor_CreateSpeedTable(void)
+{
+	uint8_t i;
+	for(i=0;i<SPEDD_LEVEL_CNT;i++)
+	{
+		speedLevel[i].speed = STEPMOTOR_TIMER_CNT(0.1+(i+1)/7);
+		speedLevel[i].speedConst = (i+1)/7*SPEED_CONST;
+	}
+}
 #endif
 
 //设置步进电机方向
@@ -98,12 +171,18 @@ void StepMotor_SetDir(uint8_t num, Direction_TypeDef dir)
 {
 	if(dir == CW)
 	{
-		STEP1_DIR = 0;
+		if(num == 0)
+			STEP1_DIR = 0;
+		else if(num == 1)
+			STEP2_DIR = 0;
 		stepMotor[num].direction = CW;
 	}
 	else
 	{
-		STEP1_DIR = 1;
+		if(num == 0)
+			STEP1_DIR = 1;
+		else if(num == 1)
+			STEP2_DIR = 1;
 		stepMotor[num].direction = CCW;
 	}
 }
@@ -112,6 +191,14 @@ void StepMotor_SetDir(uint8_t num, Direction_TypeDef dir)
 void StepMotor_SetSpeed(uint8_t num, uint8_t speedIndex)
 {
 	stepMotor[num].desSpeedIndex = speedIndex;	 //设置目标速度
+}
+
+//设置步进电机脉冲数
+//如果调用此命令则进入了脉冲计数模式
+void StepMotor_SetPluse(uint8_t num, uint32_t pulseCount)
+{
+	stepMotor[num].pulseCount = pulseCount;	 //设置脉冲数
+	stepMotor[num].status |= 0x80;	//进入脉冲计数模式
 }
 
 //设置步进电机命令
@@ -123,9 +210,10 @@ void StepMotor_SetCMD(uint8_t num, Status sta)
         {
             stepMotor[num].speedStatus = SPEED_ACC;  //加速
             stepMotor[num].curSpeedIndex = 0;  //起始速度为最小速度
+			stepMotor[num].status |= 0x01;
             TIM_SetCounter(StepMotorPin[num].TIMx, stepMotor[num].pSpeedLevel[0].speed);
             TIM_SetCompare2(StepMotorPin[num].TIMx, (stepMotor[num].pSpeedLevel[0].speed)/2);
-            stepMotor[num].status = 0x01;
+			GPIO_SetBits(StepMotorPin[0].EN_GPIOx, StepMotorPin[0].EN_GPIO_Pin);
             TIM_Cmd(StepMotorPin[num].TIMx, ENABLE);//启动定时器
         }
 		else if(stepMotor[num].curSpeedIndex <= stepMotor[num].desSpeedIndex)
@@ -154,234 +242,18 @@ void StepMotor_SetCMD(uint8_t num, Status sta)
 //设置步进电机停止命令
 void StepMotor_Stop(uint8_t num)
 {
-    if((((stepMotor[num].status)&0x01) != 0) && stepMotor[num].speedStatus != SPEED_POSOFFSET)
+    //if((((stepMotor[num].status)&0x01) != 0) && stepMotor[num].speedStatus != SPEED_POSOFFSET)
+	if((((stepMotor[num].status)&0x01) != 0) && stepMotor[num].speedStatus != SPEED_STOP)
         stepMotor[num].speedStatus = SPEED_STOP;
 	
 	//TF1 = 1; //进入定时器1中断		
 }
 
-void StepMotor_StopAndAlign(uint8_t num, uint8_t len)
-{
-	StepMotor_SetCMD(num, DISABLE);   //立即减速
-
-	StepMotor_SetPos(num, len);
-	while(!StepMotor_IsOnPos(num))
-	{
-		if(PhSensor_GetStatus(PHSENSOR_POS))
-			StepMotor_UpdatePos(num);	
-	} 
-	StepMotor_Stop(num);	  //终点位置到立即停止
-	while(!StepMotor_IsStop(num));//等到电机停止
-}
-
-void StepMotor_SetPos(uint8_t num, uint8_t pos)
-{
-	stepMotor[num].curCount = 0;
-	stepMotor[num].desCount = pos;	
-}
-
-void StepMotor_UpdatePos(uint8_t num)
-{
-	stepMotor[num].curCount++;
-
-	if(stepMotor[num].direction == CW)
-	{
-		stepMotor[num].curPos++;
-		if(stepMotor[num].curPos >= TANK_COUNT)
-			stepMotor[num].curPos = 0;	
-	}
-	else
-	{
-		stepMotor[num].curPos--;
-		if(stepMotor[num].curPos < 0)
-			stepMotor[num].curPos = TANK_COUNT-1;
-	}
-	
-	//Uart_SendData(pStepMotor->curPos);			
-}
-
-uint8_t StepMotor_IsOnPos(uint8_t num)
-{
-	return (stepMotor[num].curCount >= stepMotor[num].desCount); 		
-}
-
+//检查步进电机是否已经停止
+//返回1,表示已经停止
 uint8_t StepMotor_IsStop(uint8_t num)
 {
-	return (((stepMotor[num].status)&0x01) == 0); 
-    //return (((StepMotorPin[num].TIMx->CR1)&TIM_CR1_CEN) == 0);   
-}
-
-//转盘回原点
-void StepMotor_Home(uint8_t num)
-{
-	cDebug("Home\n");
-
-	PhSensor_SetCheckEdge(PHSENSOR_HOME, FALLINGEDGE);
-
-	StepMotor_SetPos(num, 1);
-	StepMotor_SetSpeed(num, SPEDD_HOME);  //第8级速度
-	StepMotor_SetDir(num, CCW);
-	StepMotor_SetCMD(num, ENABLE);
-
-	while(!StepMotor_IsOnPos(num))
-	{
-		if(PhSensor_GetStatus(PHSENSOR_HOME))
-			StepMotor_UpdatePos(num);	
-	}
-	
-	StepMotor_SetPos(num, 9);
-	while(!StepMotor_IsOnPos(num))
-	{
-		if(PhSensor_GetStatus(PHSENSOR_POS))
-			StepMotor_UpdatePos(num);
-	}
-	 
-	StepMotor_SetCMD(num, DISABLE);   //原点传感器检测到立即减速
-
-	StepMotor_SetPos(num, 2);
-	while(!StepMotor_IsOnPos(num))
-	{
-		if(PhSensor_GetStatus(PHSENSOR_POS))
-			StepMotor_UpdatePos(num);	
-	} 
-	StepMotor_Stop(num);	  //第3个位置检测到立即停止
-	while(!StepMotor_IsStop(num));	
-
-	stepMotor[num].curPos = 0;  //设置当前位置为0
-}
-
-//返回转盘转动坐标系的（相对）位置
-uint8_t StepMotor_Abs2Rel(uint8_t num, uint8_t absCoord)
-{
-	return ((absCoord + stepMotor[num].curPos) % TANK_COUNT);	
-}
-
-//转盘转动坐标定位，dis为距离
-void StepMotor_Position(uint8_t num, Direction_TypeDef dir, uint8_t dis)
-{
-	PhSensor_SetCheckEdge(PHSENSOR_POS, FALLINGEDGE);
-	
-	//设置步进电机方向
-	if(dir == CW) 
-		StepMotor_SetDir(num, CW);
-	else
-		StepMotor_SetDir(num, CCW);
-	
-	//
-	if(dis == 1)
-	{
-		StepMotor_SetSpeed(num, SPEED_POSITION1);  //第5级速度
-		StepMotor_SetPos(num, 1);
-		StepMotor_SetCMD(num, ENABLE);	
-		while(!StepMotor_IsOnPos(num))
-		{
-			if(PhSensor_GetStatus(PHSENSOR_POS))
-				StepMotor_UpdatePos(num);	
-		} 
-		StepMotor_Stop(num);   //终点到立即停止	
-	}
-	else if(dis == 2)
-	{
-		StepMotor_SetSpeed(num, SPEED_POSITION2);  //第8级速度
-		StepMotor_SetPos(num, 1);
-		StepMotor_SetCMD(num, ENABLE);	
-		while(!StepMotor_IsOnPos(num))
-		{
-			if(PhSensor_GetStatus(PHSENSOR_POS))
-				StepMotor_UpdatePos(num);	
-		}  
-		StepMotor_SetCMD(num, DISABLE);   //前1个位置到立即减速
-		
-		StepMotor_SetPos(num, 1);
-		while(!StepMotor_IsOnPos(num))
-		{
-			if(PhSensor_GetStatus(PHSENSOR_POS))
-				StepMotor_UpdatePos(num);	
-		} 
-		StepMotor_Stop(num);	  //终点位置到立即停止	
-	}
-	else if(dis > 2)
-	{
-		StepMotor_SetSpeed(num, SPEDD_POSITION);  //第8级速度
-		StepMotor_SetPos(num, dis - 2);
-		StepMotor_SetCMD(num, ENABLE);	
-		while(!StepMotor_IsOnPos(num))
-		{
-			if(PhSensor_GetStatus(PHSENSOR_POS))
-				StepMotor_UpdatePos(num);	
-		} 
-		StepMotor_SetCMD(num, DISABLE);   //前2个位置到立即减速
-		
-		StepMotor_SetPos(num, 2);
-		while(!StepMotor_IsOnPos(num))
-		{
-			if(PhSensor_GetStatus(PHSENSOR_POS))
-				StepMotor_UpdatePos(num);	
-		} 
-		StepMotor_Stop(num);	  //终点位置到立即停止	
-	}
-	
-	//等到电机真正停止
-	while(!StepMotor_IsStop(num));
-
-	//偏移			
-}
-
-//转盘相对坐标定位，srcTank要转到desTank的位置					   
-void StepMotor_RelativePosition(uint8_t num, uint8_t desTank, uint8_t srcTank)
-{
-	int8_t len;
-	uint8_t dis;
-	Direction_TypeDef dir;
-
-	len = desTank - srcTank;  //反转为主
-	//len = srcTank - desTank;	//正转为主
-
-	if(len == 0)
-		return;
-
-//	if(abs(len) > TANK_COUNT/2)
-//	{
-//		if(len > 0) //原来是顺时针
-//			dir = CW;
-//		else  //原来是逆时针
-//			dir = CCW;
-//
-//		dis = TANK_COUNT - abs(len);
-//	}
-//	else
-//	{
-//		if(len > 0)
-//			dir = CCW;
-//		else
-//			dir = CW;
-//			
-//		dis = abs(len);	
-//	}
-
-	dir = CCW;
-	if(len < 0)
-		dis = TANK_COUNT + len;
-	else
-		dis = len;
-
-	StepMotor_Position(num, dir, dis);
-
-//	for(i=0;i<dis;i++)
-//	{
-//		if(dir == CW)
-//		{
-//			pStepMotor->curPos++;
-//			if(pStepMotor->curPos >= TANK_COUNT)
-//				pStepMotor->curPos = 0;
-//		}
-//		else
-//		{
-//			pStepMotor->curPos--;
-//			if(pStepMotor->curPos < 0)
-//				pStepMotor->curPos = TANK_COUNT-1;
-//		}
-//	}	
+	return !(stepMotor[num].status&0x01);
 }
 
 //步进电机初始化
@@ -394,6 +266,9 @@ void StepMotor_Init(void)
 	TIM_OCInitTypeDef  TIM_OCInitStructure;
     NVIC_InitTypeDef NVIC_InitStructure;
     
+	//创建速度表
+	StepMotor_CreateSpeedTable();
+	
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA|RCC_APB2Periph_AFIO, ENABLE);
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2|RCC_APB1Periph_TIM5, ENABLE);
     
@@ -413,7 +288,7 @@ void StepMotor_Init(void)
         GPIO_Init(StepMotorPin[i].PWM_GPIOx, &GPIO_InitStructure);
         
         //STEPMOTOR_DEFAULT_PERIOD
-        TIM_TimeBaseStructure.TIM_Period = STEPMOTOR_DEFAULT_PERIOD; //设置在下一个更新事件装入活动的自动重装载寄存器周期的值,如72000000/900=80KHz
+        TIM_TimeBaseStructure.TIM_Period = speedLevel[0].speed; //设置在下一个更新事件装入活动的自动重装载寄存器周期的值,如72000000/900=80KHz
         TIM_TimeBaseStructure.TIM_Prescaler = 0; //设置用来作为TIMx时钟频率除数的预分频值 
         TIM_TimeBaseStructure.TIM_ClockDivision = 0; //设置时钟分割:TDTS = Tck_tim
         TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Down;  //TIM向上计数模式
@@ -444,44 +319,152 @@ void StepMotor_Init(void)
                 break;
         }
         
-        GPIO_SetBits(StepMotorPin[i].EN_GPIOx, StepMotorPin[i].EN_GPIO_Pin);  //使能步进驱动器
+        GPIO_ResetBits(StepMotorPin[i].EN_GPIOx, StepMotorPin[i].EN_GPIO_Pin);  //使能步进驱动器
         GPIO_ResetBits(StepMotorPin[i].DIR_GPIOx, StepMotorPin[i].DIR_GPIO_Pin);
         
         NVIC_InitStructure.NVIC_IRQChannel = StepMotorPin[i].NVIC_IRQChannel;
-        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=1 ;//抢占优先级3
-        NVIC_InitStructure.NVIC_IRQChannelSubPriority = i;		//子优先级3
+        NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=2 ;//抢占优先级3
+        NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;		//子优先级3
         NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			//IRQ通道使能
         NVIC_Init(&NVIC_InitStructure);	//根据指定的参数初始化VIC寄存器
         
         TIM_ARRPreloadConfig(StepMotorPin[i].TIMx, ENABLE);
         TIM_ITConfig(StepMotorPin[i].TIMx, TIM_IT_Update, ENABLE);
         //TIM_Cmd(StepMotorPin[i].TIMx, ENABLE);
+		
+		/****************初始化步进电机结构体***********************************/
+		stepMotor[i].offset = pMotorMan->motorParaWastePumpCalib;
+		stepMotor[i].speedStatus = SPEED_NONE;
+		stepMotor[i].pSpeedLevel = speedLevel;
+		stepMotor[i].curSpeedIndex = 0;
+		stepMotor[i].desSpeedIndex = 0;
+		stepMotor[i].status = 0;
+		stepMotor[i].direction = CW;
+		
+		stepMotor[i].control = 0x00;
     }
     //不使用步进电机2中断
-    TIM_ITConfig(StepMotorPin[1].TIMx, TIM_IT_Update, DISABLE);
+    //TIM_ITConfig(StepMotorPin[1].TIMx, TIM_IT_Update, DISABLE);
     
+	GPIO_SetBits(StepMotorPin[0].EN_GPIOx, StepMotorPin[0].EN_GPIO_Pin);  //使能步进驱动器
+	GPIO_SetBits(StepMotorPin[1].EN_GPIOx, StepMotorPin[1].EN_GPIO_Pin);  //使能步进驱动器
+	
 //    for(i=0;i<SIZEOF(speedLevel);i++)
 //    {
 //        printf("speedLevel[%d].speed = %d\t\n", i, speedLevel[i].speed);
 //        printf("speedLevel[%d].speedConst = %d\t\n", i, speedLevel[i].speedConst);
 //    }
-    
-    /****************初始化步进电机结构体***********************************/
-	pStepMotor->offset = STEPMOTOR_OFFSET;
-	//pStepMotor->offset = pProjectMan->posCali1;
-	pStepMotor->speedStatus = SPEED_NONE;
-	pStepMotor->pSpeedLevel = speedLevel;
-	pStepMotor->curSpeedIndex = 0;
-	pStepMotor->desSpeedIndex = 0;
-
-	pStepMotor->control = 0x00;
 }
 
 void TIM2_IRQHandler(void)
 {
+	static uint16_t cnt = 0;
+	static uint16_t offset = 0;
+	static uint32_t pluseCount = 0;
     uint32_t oldBasePri = portSET_INTERRUPT_MASK_FROM_ISR();
     if(TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)
     {
+		 switch(stepMotor[1].speedStatus)
+		 {
+            case SPEED_ACC: //加速
+            {
+                cnt++;
+                if(cnt >= stepMotor[1].pSpeedLevel[stepMotor[1].curSpeedIndex].speedConst)
+                {
+                    cnt = 0;
+                    stepMotor[1].curSpeedIndex++;
+                }
+        
+                if(stepMotor[1].curSpeedIndex >= stepMotor[1].desSpeedIndex) //加速完成
+                {
+                    stepMotor[1].curSpeedIndex = stepMotor[1].desSpeedIndex;
+                    stepMotor[1].speedStatus = SPEED_NONE;
+                }		
+            }
+            break;
+            case SPEED_DEC: //减速
+            {
+                cnt++;
+                if(cnt >= stepMotor[1].pSpeedLevel[stepMotor[1].curSpeedIndex].speedConst)
+                {
+                    cnt = 0;
+                    stepMotor[1].curSpeedIndex--;
+                }
+        
+                if(stepMotor[1].curSpeedIndex <= stepMotor[1].desSpeedIndex)  //减速到目标速度
+                {
+                    stepMotor[1].curSpeedIndex = stepMotor[1].desSpeedIndex;
+                    stepMotor[1].speedStatus = SPEED_NONE;
+                    
+                    cnt = 0;
+                    //TR1 = 0;  //停止定时器1
+                    //TIM_Cmd(StepMotorPin[1].TIMx, DISABLE);
+                }
+            }
+            break;
+            case SPEED_STOP: 
+            {
+                offset++;
+                if(offset++ >= stepMotor[1].offset)
+                {
+					offset = 0;
+                    cnt = 0;
+                    stepMotor[1].curSpeedIndex = 0;
+                    stepMotor[1].speedStatus = SPEED_NONE;
+					//stepMotor[0].status &= ~0x01;
+					
+					pluseCount = 0;
+					stepMotor[1].status &= ~0x81; //停止电机，强制退出脉冲计数模式
+					
+                    //停止定时器1
+					//GPIO_ResetBits(StepMotorPin[1].EN_GPIOx, StepMotorPin[1].EN_GPIO_Pin);
+                    TIM_Cmd(TIM2, DISABLE);
+                    //cDebug("interrupt---stop the timer5\n");
+                    break;	
+                }
+
+                cnt++;
+                if(cnt >= stepMotor[1].pSpeedLevel[stepMotor[1].curSpeedIndex].speedConst)
+                {
+                    cnt = 0;
+                    stepMotor[1].curSpeedIndex--;
+                }
+        
+                if(stepMotor[1].curSpeedIndex <= 0)  //减速到最小速度
+                {
+                    stepMotor[1].curSpeedIndex = 0;
+                    cnt = 0;
+                }
+            }
+            break;
+            case SPEED_NONE:
+            break;
+            default:
+            break;
+        }
+
+		if(stepMotor[1].status & 0x80)
+		{
+			pluseCount++;
+			if(pluseCount >= stepMotor[1].pulseCount)
+			{
+				pluseCount = 0;
+				offset = 0;
+				cnt = 0;
+				
+				stepMotor[1].status &= ~0x81;
+				stepMotor[1].curSpeedIndex = 0;
+				stepMotor[1].speedStatus = SPEED_NONE;
+				
+				//停止定时器1
+				//GPIO_ResetBits(StepMotorPin[1].EN_GPIOx, StepMotorPin[1].EN_GPIO_Pin);
+				TIM_Cmd(TIM2, DISABLE);
+			}
+		}
+        //更新定时器
+        TIM_SetCounter(TIM2, stepMotor[1].pSpeedLevel[stepMotor[1].curSpeedIndex].speed);
+        TIM_SetCompare2(TIM2, (stepMotor[1].pSpeedLevel[stepMotor[1].curSpeedIndex].speed)/2);
+		
         TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
     }
     portCLEAR_INTERRUPT_MASK_FROM_ISR(oldBasePri);
@@ -491,14 +474,9 @@ void TIM2_IRQHandler(void)
 void TIM5_IRQHandler(void)
 {
 	static uint16_t cnt = 0;
-    //static uint16_t ledCnt = 0;
+	static uint16_t offset = 0;
+	static uint32_t pluseCount = 0;
     uint32_t oldBasePri = portSET_INTERRUPT_MASK_FROM_ISR();
-    
-//    if(ledCnt++ > 5000)
-//    {
-//        ledCnt = 0;
-//        LED1 = !LED1;
-//    } 
     
     if(TIM_GetITStatus(TIM5, TIM_IT_Update) == SET)
     {
@@ -542,41 +520,39 @@ void TIM5_IRQHandler(void)
             break;
             case SPEED_STOP: 
             {
-    //			pStepMotor->curSpeedIndex = 0;
-    //			pStepMotor->speedStatus = SPEED_POSOFFSET;
-    //	
-    //			cnt = 0;
-    //			//TR1 = 0;  //停止定时器1
-
-                cnt++;
-                if(cnt >= stepMotor[0].pSpeedLevel[stepMotor[0].curSpeedIndex].speedConst)
-                {
-                    cnt = 0;
-                    stepMotor[0].curSpeedIndex--;
-                }
-        
-                if(stepMotor[0].curSpeedIndex <= 0)  //减速到最小速度
-                {
-                    stepMotor[0].curSpeedIndex = 0;			
-                    cnt = 0;
-                }
-                stepMotor[0].speedStatus = SPEED_POSOFFSET;
-            }
-            break;
-            case SPEED_POSOFFSET:
-            {
-                static uint16_t offset = 0;
-
+//                cnt++;
+//                if(cnt >= stepMotor[0].pSpeedLevel[stepMotor[0].curSpeedIndex].speedConst)
+//                {
+//                    cnt = 0;
+//                    stepMotor[0].curSpeedIndex--;
+//                }
+//        
+//                if(stepMotor[0].curSpeedIndex <= 0)  //减速到最小速度
+//                {
+//                    stepMotor[0].curSpeedIndex = 0;			
+//                    cnt = 0;
+//                }
+//                stepMotor[0].speedStatus = SPEED_POSOFFSET;
+//            }
+//            break;
+//            case SPEED_POSOFFSET:
+//            {
                 offset++;
                 if(offset++ >= stepMotor[0].offset)
                 {
+					offset = 0;
+                    cnt = 0;
                     stepMotor[0].curSpeedIndex = 0;
                     stepMotor[0].speedStatus = SPEED_NONE;
-                    //TR1 = 0;  //停止定时器1
+					//stepMotor[0].status &= ~0x01;
+					
+					pluseCount = 0;
+					stepMotor[0].status &= ~0x81; //停止电机，强制退出脉冲计数模式
+					
+                    //停止定时器1
+					//GPIO_ResetBits(StepMotorPin[0].EN_GPIOx, StepMotorPin[0].EN_GPIO_Pin);
                     TIM_Cmd(TIM5, DISABLE);
-                    printf("interrupt---stop the timer5\n");
-                    offset = 0;
-                    cnt = 0;
+                    //cDebug("interrupt---stop the timer5\n");
                     break;	
                 }
 
@@ -600,6 +576,24 @@ void TIM5_IRQHandler(void)
             break;
         }
 
+		if(stepMotor[0].status & 0x80)
+		{
+			pluseCount++;
+			if(pluseCount >= stepMotor[0].pulseCount)
+			{
+				pluseCount = 0;
+				offset = 0;
+				cnt = 0;
+				
+				stepMotor[0].status &= ~0x81;
+				stepMotor[0].curSpeedIndex = 0;
+				stepMotor[0].speedStatus = SPEED_NONE;
+				
+				//停止定时器1
+				//GPIO_ResetBits(StepMotorPin[0].EN_GPIOx, StepMotorPin[0].EN_GPIO_Pin);
+				TIM_Cmd(TIM5, DISABLE);
+			}
+		}
         //更新定时器
         TIM_SetCounter(TIM5, stepMotor[0].pSpeedLevel[stepMotor[0].curSpeedIndex].speed);
         TIM_SetCompare2(TIM5, (stepMotor[0].pSpeedLevel[stepMotor[0].curSpeedIndex].speed)/2);
@@ -607,59 +601,4 @@ void TIM5_IRQHandler(void)
         TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
     }
     portCLEAR_INTERRUPT_MASK_FROM_ISR(oldBasePri);
-}
-
-void StepMotorTestTask(void)
-{
-//	if(pStepMotor->control == 0x01) //启动定时器
-//	{
-//		pStepMotor->SetPos(1);
-//		pSensor->SetCheckEdge(FALLINGEDGE);
-
-//		//pStepMotor->SetTimer(ENABLE); //启动定时器1
-
-//		while(!pStepMotor->IsOnPos())
-//		{
-//			if(pSensor->GetStatus(SENSOR_POS))
-//				pStepMotor->UpdatePos();	
-//		}
-//		//pStepMotor->SetCMD(DISABLE);
-//		pStepMotor->Stop();
-//	}
-    
-    while(1)
-    {
-        if(pStepMotor[0].control == 0x01)
-        {
-            printf("stepMotor set speed %d\n", pStepMotor[0].temp);
-            StepMotor_SetSpeed(0, pStepMotor[0].temp);
-            StepMotor_SetCMD(0, ENABLE);
-        }
-        else if(pStepMotor[0].control == 0x02)
-        {
-            printf("stepMotor set disable\n");
-            StepMotor_SetCMD(0, DISABLE);
-        }
-        else if(pStepMotor[0].control == 0x03)
-        {
-            printf("stepMotor stop\n");
-            StepMotor_Stop(0);
-        }
-        else if(pStepMotor[0].control == 0x05)
-        {
-//            pStepMotor->SetCMD(DCMOTOR1, DISABLE);
-//            pStepMotor->SetSpeed(DCMOTOR1, 90);
-            printf("stepMotor set direction\n");
-            StepMotor_SetDir(0, (Direction_TypeDef)pStepMotor[0].temp);
-            //pStepMotor->SetCMD(DCMOTOR1, ENABLE);
-        }
-//        else
-//        {
-//            pStepMotor->SetCMD(DCMOTOR1, DISABLE);
-//        }
-        
-        pStepMotor[0].control = 0;
-        
-        vTaskDelay(100);
-    }
 }

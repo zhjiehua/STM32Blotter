@@ -147,8 +147,8 @@ have bit-0 clear, as it is loaded into the PC on exit from an ISR. */
 
 /* Each task maintains its own interrupt status in the critical nesting
 variable. */
-static UBaseType_t uxCriticalNesting = 0xaaaaaaaa;
-
+//static UBaseType_t uxCriticalNesting = 0xaaaaaaaa;
+UBaseType_t uxCriticalNesting = 0xaaaaaaaa;
 /*
  * Setup the timer to generate the tick interrupts.  The implementation in this
  * file is weak to allow application writers to change the timer used to

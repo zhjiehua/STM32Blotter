@@ -31,7 +31,9 @@ void projectPageButtonProcess(uint16 control_id, uint8  state)
 				addrOffset = pProjectMan->pCurProject->index+1;
 			AT24CXX_Read(PROJECT_BASEADDR+addrOffset*PROJECT_SIZE, (uint8_t*)project, PROJECT_SIZE);  //读出下一个项目参数			
 
+			xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 			SetTextValue(PROJECTPAGE_INDEX, PRO_PROJECTNAME_EDIT, (uint8_t*)pProjectMan->pCurProject->name);
+			xSemaphoreGive(pProjectMan->lcdUartSem);
 		}
 		break;
 		case PRO_PREPROJECT_BUTTON:
@@ -49,45 +51,54 @@ void projectPageButtonProcess(uint16 control_id, uint8  state)
 				addrOffset = pProjectMan->pCurProject->index-1;
 			AT24CXX_Read(PROJECT_BASEADDR+addrOffset*PROJECT_SIZE, (uint8_t*)project, PROJECT_SIZE);  //读出上一个项目参数
 
+			xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 			SetTextValue(PROJECTPAGE_INDEX, PRO_PROJECTNAME_EDIT, (uint8_t*)pProjectMan->pCurProject->name);
+			xSemaphoreGive(pProjectMan->lcdUartSem);
 		}
 		break;
 		case PRO_STARTPROJECT_BUTTON://开始项目，要初始化运行页面相应控件初始状态
 		{
-			SetTextValue(RUNNINGPAGE_INDEX, RUNNING_STATUS_EDIT, (uint8_t*)"runing");
-			SetTextValue(RUNNINGPAGE_INDEX, RUNNING_PROJECT_EDIT, (uint8_t*)pProjectMan->pCurProject->name);
-			SetTextValue(RUNNINGPAGE_INDEX, RUNNING_ACTION_EDIT, (uint8_t*)pProjectMan->pCurProject->action[0].name);
-			SetTextValue(RUNNINGPAGE_INDEX, RUNNING_PUMP_EDIT, (uint8_t*)"0");
-			SetTextValue(RUNNINGPAGE_INDEX, RUNNING_ADDTANK_EDIT, (uint8_t*)"0");
-			SetTextValue(RUNNINGPAGE_INDEX, RUNNING_IMBITANK_EDIT, (uint8_t*)"0");
-			SetTextValue(RUNNINGPAGE_INDEX, RUNNING_LOOPTIME_EDIT, (uint8_t*)"1");
-			SetTextValueInt32(RUNNINGPAGE_INDEX, RUNNING_TOTALLOOPTIME_EDIT, pProjectMan->pCurProject->action[0].loopTime);
-
-			StopTimer(RUNNINGPAGE_INDEX, RUNNING_TIME_RTC);
-			if(pProjectMan->pCurProject->action[0].shakeTime.hour > 0
-				|| pProjectMan->pCurProject->action[0].shakeTime.minute > 0)
+			if(!(pProjectMan->projectStatus & PROJECT_RUNNING))
 			{
-				uint32 rtcTime = pProjectMan->pCurProject->action[0].shakeTime.hour*3600
-					+ pProjectMan->pCurProject->action[0].shakeTime.minute*60;
-				SeTimer(RUNNINGPAGE_INDEX, RUNNING_TIME_RTC, rtcTime);
-				//StartTimer(RUNNINGPAGE_INDEX, RUNNING_TIME_RTC);
-			}
-			else
-				SeTimer(RUNNINGPAGE_INDEX, RUNNING_TIME_RTC, 0);
+				xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
+				
+				SetTextValue(RUNNINGPAGE_INDEX, RUNNING_STATUS_EDIT, (uint8_t*)"runing");
+				SetTextValue(RUNNINGPAGE_INDEX, RUNNING_PROJECT_EDIT, (uint8_t*)pProjectMan->pCurProject->name);
+				SetTextValue(RUNNINGPAGE_INDEX, RUNNING_ACTION_EDIT, (uint8_t*)pProjectMan->pCurProject->action[0].name);
+				SetTextValue(RUNNINGPAGE_INDEX, RUNNING_PUMP_EDIT, (uint8_t*)"0");
+				SetTextValue(RUNNINGPAGE_INDEX, RUNNING_ADDTANK_EDIT, (uint8_t*)"0");
+				SetTextValue(RUNNINGPAGE_INDEX, RUNNING_IMBITANK_EDIT, (uint8_t*)"0");
+				SetTextValue(RUNNINGPAGE_INDEX, RUNNING_LOOPTIME_EDIT, (uint8_t*)"1");
+				SetTextValueInt32(RUNNINGPAGE_INDEX, RUNNING_TOTALLOOPTIME_EDIT, pProjectMan->pCurProject->action[0].loopTime);
 
-			SetControlVisiable(RUNNINGPAGE_INDEX, RUNNING_PAUSE_BUTTON, 0);
-			SetControlVisiable(RUNNINGPAGE_INDEX, RUNNING_STOP_BUTTON, 0);
+				StopTimer(RUNNINGPAGE_INDEX, RUNNING_TIME_RTC);
+				if(pProjectMan->pCurProject->action[0].shakeTime.hour > 0
+					|| pProjectMan->pCurProject->action[0].shakeTime.minute > 0)
+				{
+					uint32 rtcTime = pProjectMan->pCurProject->action[0].shakeTime.hour*3600
+						+ pProjectMan->pCurProject->action[0].shakeTime.minute*60;
+					SeTimer(RUNNINGPAGE_INDEX, RUNNING_TIME_RTC, rtcTime);
+					//StartTimer(RUNNINGPAGE_INDEX, RUNNING_TIME_RTC);
+				}
+				else
+					SeTimer(RUNNINGPAGE_INDEX, RUNNING_TIME_RTC, 0);
 
-			pProjectMan->pCurRunningProject = pProjectMan->pCurProject;
-			pProjectMan->pCurRunningAction = &pProjectMan->pCurRunningProject->action[0];
-			//pProjectMan->runningType = RUNNING_PROJECT; //同步工作线程
+				SetControlVisiable(RUNNINGPAGE_INDEX, RUNNING_PAUSE_BUTTON, 0);
+				SetControlVisiable(RUNNINGPAGE_INDEX, RUNNING_STOP_BUTTON, 0);
 
-			//创建线程
-			//os_create_task(TASK_PROJECT);	//创建工程任务
-			//createTask(TASK_PROJECT);
-            xTaskCreate( (TaskFunction_t)ProjectTask, "ProjectTask", project_TASK_STACKDEP, NULL, project_TASK_PRIORITY, NULL );
-            
-			//cDebug("========projectPage start to run the PROJECT program\n");
+				xSemaphoreGive(pProjectMan->lcdUartSem);
+				
+				pProjectMan->pCurRunningProject = pProjectMan->pCurProject;
+				pProjectMan->pCurRunningAction = &pProjectMan->pCurRunningProject->action[0];
+				
+				xSemaphoreTake(pProjectMan->projectStatusSem, portMAX_DELAY);
+				pProjectMan->projectStatus = PROJECT_PROJECT;
+				pProjectMan->projectStatus |= PROJECT_RUNNING;
+				pProjectMan->projectStopFlag = 0;
+				xSemaphoreGive(pProjectMan->projectStatusSem);
+				
+				cDebug("========projectPage start to run the PROJECT program\n");
+			}			
 		}
 		break;
 		case PRO_BACK_BUTTON:
@@ -107,7 +118,9 @@ void projectPageEditProcess(uint16 control_id, uint8 *str)
 			if(pProjectMan->startTank > pProjectMan->endTank)
 			{
 				pProjectMan->endTank = pProjectMan->startTank;
+				xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 				SetTextValue(PROJECTPAGE_INDEX, PRO_ENDTANK_EDIT, str);
+				xSemaphoreGive(pProjectMan->lcdUartSem);
 			}
 		break;
 		case PRO_ENDTANK_EDIT:
@@ -115,7 +128,9 @@ void projectPageEditProcess(uint16 control_id, uint8 *str)
 			if(pProjectMan->startTank > pProjectMan->endTank)
 			{
 				pProjectMan->startTank = pProjectMan->endTank;
+				xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
 				SetTextValue(PROJECTPAGE_INDEX, PRO_STARTTANK_EDIT, str);
+				xSemaphoreGive(pProjectMan->lcdUartSem);
 			}
 		break;
 		default:
