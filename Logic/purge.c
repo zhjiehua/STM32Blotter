@@ -46,19 +46,19 @@ void wasteFluidAbsorb(uint8_t *pStopFlag)
 	RELAY = 1;
 
 	//延时，抽空废液瓶的空气形成气压差
-	vTaskDelay(255*6);
+	vTaskDelay(4000);
 
 	//放下废液口
 	WastePump_SetPos(DOWN, pMotorMan->motorParaWastePumpSpeed, pStopFlag);
 
 	//延时一小段时间
-	vTaskDelay(255*13);
+	vTaskDelay(4000);
 
 	//提起废液口
 	WastePump_SetPos(UP, pMotorMan->motorParaWastePumpSpeed, pStopFlag);
 
 	//延时，吸取剩下的液体
-	vTaskDelay(255*6);
+	vTaskDelay(4000);
 
 	//关闭夹管阀
 	RELAY = 0;

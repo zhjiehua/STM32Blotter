@@ -426,8 +426,8 @@ void ProjectTask(void)
 					ProjectProgram(&pProjectMan->projectStopFlag);		//项目
 				break;
 				case PROJECT_BACKFLOW:
-					//暂不做回流功能
-				
+					cDebug("start BackFlowProgram\r\n");				//回流
+					BackFlowProgram(&pProjectMan->projectStopFlag);
 				break;
 				case PROJECT_PURGE:
 					cDebug("start PurgeProgram\r\n");

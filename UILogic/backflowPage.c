@@ -53,6 +53,30 @@ void backflowPageButtonProcess(uint16 control_id, uint8  state)
 			break;
 		case BACKFLOW_OK_BUTTON:
 			{
+				xSemaphoreTake(pProjectMan->projectStatusSem, portMAX_DELAY);
+				
+				//if(state)
+				{
+					if(!(pProjectMan->projectStatus & PROJECT_RUNNING))
+					{
+						pProjectMan->projectStopFlag = 0;
+						pProjectMan->projectStatus = PROJECT_BACKFLOW;
+						pProjectMan->projectStatus |= PROJECT_RUNNING;
+					}
+					else
+					{
+						xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
+						SetButtonValue(BACKFLOWPAGE_INDEX, BACKFLOW_OK_BUTTON, 0);
+						xSemaphoreGive(pProjectMan->lcdUartSem);
+					}
+				}
+	//			else
+	//			{
+	//				pProjectMan->projectStopFlag = 1;
+	//			}
+
+				xSemaphoreGive(pProjectMan->projectStatusSem);
+				
 				cDebug("running backflow program!\n");
 			}
 			break;

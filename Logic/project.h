@@ -127,6 +127,7 @@ void ProjectProgram(uint8_t *pStopFlag);
 void PurgeProgram(uint8_t *pStopFlag);
 void HomeProgram(uint8_t *pStopFlag);
 void CalibraProgram(uint8_t *pStopFlag);
+void BackFlowProgram(uint8_t *pStopFlag);
 
 #ifdef __cplusplus
 }

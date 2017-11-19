@@ -79,6 +79,14 @@ typedef struct
 	uint32_t rasingEdgeSingle; //上升沿，在查询方式用
 	
 	CheckEdge_TypeDef checkEdge[PHSENSOR_COUNT];   //检测边沿类型
+	
+	uint32_t posTimerCounter;
+	
+	uint32_t posTimerCounterAverage;
+	uint8_t counterBufferIndex;
+	uint8_t counterBufferStatFlag;
+	
+	uint8_t homeFlag;
 }PhSensor_TypeDef;
 
 extern const PhSensorPin_TypeDef phSensorPin[];

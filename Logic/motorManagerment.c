@@ -84,6 +84,7 @@ void Turntable_SetOffset(uint16_t offset)
 	pStepMotor[0].offset = offset;
 }
 
+#if 0
 //转盘回原点
 void Turntable_Home(uint8_t *pStopFlag)
 {
@@ -132,11 +133,71 @@ void Turntable_Home(uint8_t *pStopFlag)
 
 	motorMan.curPos = 0;  //设置当前位置为0
 }
+#else
+//转盘回原点
+void Turntable_Home(uint8_t *pStopFlag)
+{
+	EXTI_InitTypeDef EXTI_InitStructure;
+	cDebug("Home\n");
+	
+	pStepMotor[0].offset = motorMan.motorParaWastePumpCalib;//motorParaWastePumpCalib  motorParaCCWPumpCalib
+	pPhSensor->homeFlag = 0;
+	pPhSensor->counterBufferStatFlag = 0;
+	pPhSensor->counterBufferIndex = 0;
+	pPhSensor->posTimerCounterAverage = 0;
+	
+	EXTI_InitStructure.EXTI_Line = EXTI_Line12;	//KEY2
+  	EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;	
+  	EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising_Falling;
+  	EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  	EXTI_Init(&EXTI_InitStructure);
+	
+	StepMotor_SetSpeed(STEPMOTOR_MAIN, motorMan.motorParaTTHomeSpeed);
+	StepMotor_SetDir(STEPMOTOR_MAIN, CCW);
+	StepMotor_SetCMD(STEPMOTOR_MAIN, ENABLE);
+
+	while(!pPhSensor->homeFlag && !(*pStopFlag))
+	{
+		vTaskDelay(10);
+	}
+	
+	EXTI_InitStructure.EXTI_LineCmd = DISABLE;
+  	EXTI_Init(&EXTI_InitStructure);
+	pPhSensor->homeFlag = 0;
+	
+	Turntable_SetPos(8+2);//9
+	PhSensor_SingleScan(PHSENSOR_POS);
+	while(!Turntable_IsOnPos() && !(*pStopFlag))
+	{
+		PhSensor_SingleScan(PHSENSOR_POS);
+		if(PhSensor_SingleCheckEdge(PHSENSOR_POS, FALLINGEDGE))
+			Turntable_UpdatePos();
+		vTaskDelay(10);
+	}
+	 
+	StepMotor_SetCMD(STEPMOTOR_MAIN, DISABLE);   //????????????
+
+	Turntable_SetPos(4);//2
+	PhSensor_SingleScan(PHSENSOR_POS);
+	while(!Turntable_IsOnPos() && !(*pStopFlag))
+	{
+		PhSensor_SingleScan(PHSENSOR_POS);
+		if(PhSensor_SingleCheckEdge(PHSENSOR_POS, FALLINGEDGE))
+			Turntable_UpdatePos();
+		vTaskDelay(10);
+	} 
+	StepMotor_Stop(STEPMOTOR_MAIN);	  //第3个位置检测到立即停止
+	while(!StepMotor_IsStop(STEPMOTOR_MAIN) && !(*pStopFlag))
+		vTaskDelay(10);
+
+	motorMan.curPos = 0;  //设置当前位置为0
+}
+#endif
 
 //返回转盘转动坐标系的（相对）位置
 uint8_t Turntable_Abs2Rel(uint8_t absCoord)
 {
-	return ((absCoord + motorMan.curPos) % TANK_COUNT);	
+	return ((absCoord + motorMan.curPos) % TANK_COUNT);
 }
 
 //转盘转动坐标定位，dis为距离
@@ -299,7 +360,7 @@ void WastePump_SetPos(Position_TypeDef pos, uint8_t speed, uint8_t *pStopFlag)
 		PhSensor_SingleScan(PHSENSOR_DOWN);
 		if(!PhSensor_SingleCheck(PHSENSOR_DOWN))
 		{
-			while(!PhSensor_SingleCheckEdge(PHSENSOR_DOWN, RASINGEDGE) && !(*pStopFlag))
+			while(!PhSensor_SingleCheckEdge(PHSENSOR_DOWN, FALLINGEDGE) && !(*pStopFlag))
 			{
 				vTaskDelay(10);
 				PhSensor_SingleScan(PHSENSOR_DOWN);

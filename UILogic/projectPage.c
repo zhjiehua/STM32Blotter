@@ -98,7 +98,13 @@ void projectPageButtonProcess(uint16 control_id, uint8  state)
 				xSemaphoreGive(pProjectMan->projectStatusSem);
 				
 				cDebug("========projectPage start to run the PROJECT program\n");
-			}			
+			}
+			else
+			{
+				xSemaphoreTake(pProjectMan->lcdUartSem, portMAX_DELAY);
+				SetScreen(PROJECTPAGE_INDEX);
+				xSemaphoreGive(pProjectMan->lcdUartSem);
+			}
 		}
 		break;
 		case PRO_BACK_BUTTON:
